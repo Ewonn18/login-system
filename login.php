@@ -1,4 +1,5 @@
 <?php
+// Git practice change
 session_start();
 include "db.php";
 
