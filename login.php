@@ -1,6 +1,5 @@
 <?php
-// Git practice change
-session_start();
+// Updated on feature branch
 include "db.php";
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
