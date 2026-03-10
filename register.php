@@ -1,14 +1,19 @@
 <?php
 include "db.php";
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $name = trim($_POST["name"]);
-    $email = trim($_POST["email"]);
-    $password = trim($_POST["password"]);
-    $confirmPassword = trim($_POST["confirm_password"]);
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $name = trim($_POST["name"] ?? "");
+    $email = trim($_POST["email"] ?? "");
+    $password = trim($_POST["password"] ?? "");
+    $confirmPassword = trim($_POST["confirm_password"] ?? "");
 
     if (empty($name) || empty($email) || empty($password) || empty($confirmPassword)) {
         header("Location: index.php?panel=signup&type=error&message=" . urlencode("All fields are required."));
+        exit();
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Invalid email format."));
         exit();
     }
 
@@ -43,6 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if ($checkStmt->num_rows > 0) {
         $checkStmt->close();
         $conn->close();
+
         header("Location: index.php?panel=signup&type=error&message=" . urlencode("Email already exists."));
         exit();
     }
@@ -55,6 +61,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     if (!$stmt) {
         $checkStmt->close();
         $conn->close();
+
         header("Location: index.php?panel=signup&type=error&message=" . urlencode("Something went wrong."));
         exit();
     }
@@ -65,14 +72,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $stmt->close();
         $checkStmt->close();
         $conn->close();
+
         header("Location: index.php?panel=signin&type=success&message=" . urlencode("Registration successful. You can now sign in."));
         exit();
     } else {
         $stmt->close();
         $checkStmt->close();
         $conn->close();
+
         header("Location: index.php?panel=signup&type=error&message=" . urlencode("Registration failed."));
         exit();
     }
+} else {
+    header("Location: index.php");
+    exit();
 }
 ?>
