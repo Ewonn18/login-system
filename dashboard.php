@@ -49,8 +49,8 @@ $conn->close();
   <div class="w-full max-w-4xl bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl overflow-hidden">
 
     <div class="bg-gradient-to-r from-violet-500 to-fuchsia-600 p-8 text-white">
-      <h1 class="text-4xl font-bold">Welcome, <?php echo htmlspecialchars($user["name"]); ?>!</h1>
-      <p class="mt-2 text-white/90">This is your profile dashboard.</p>
+      <h1 class="text-4xl font-bold">Welcome back, <?php echo htmlspecialchars($user["name"]); ?>!</h1>
+<p class="mt-2 text-white/90">Manage your account details and keep your profile up to date.</p>
     </div>
 
     <div class="p-8 text-white">
