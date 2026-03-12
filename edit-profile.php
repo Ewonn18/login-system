@@ -14,13 +14,70 @@ $messageType = "";
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $name = trim($_POST["name"]);
     $email = trim($_POST["email"]);
+    $bio = trim($_POST["bio"] ?? "");
+    $school = trim($_POST["school"] ?? "");
+    $specialization = trim($_POST["specialization"] ?? "");
+    $skills = trim($_POST["skills"] ?? "");
     $newPassword = trim($_POST["new_password"]);
     $confirmPassword = trim($_POST["confirm_password"]);
+    $profilePicturePath = null;
+
+    $uploadOk = true;
+
+    if (isset($_FILES["profile_picture"]) && $_FILES["profile_picture"]["error"] !== UPLOAD_ERR_NO_FILE) {
+        if ($_FILES["profile_picture"]["error"] !== UPLOAD_ERR_OK) {
+            $message = "There was a problem uploading your profile picture.";
+            $messageType = "error";
+            $uploadOk = false;
+        } else {
+            $maxSize = 2 * 1024 * 1024; // 2MB
+
+            if ($_FILES["profile_picture"]["size"] > $maxSize) {
+                $message = "Profile picture must be smaller than 2MB.";
+                $messageType = "error";
+                $uploadOk = false;
+            } else {
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $_FILES["profile_picture"]["tmp_name"]);
+                finfo_close($finfo);
+
+                $allowedTypes = [
+                    "image/jpeg" => ".jpg",
+                    "image/png" => ".png",
+                    "image/webp" => ".webp",
+                ];
+
+                if (!array_key_exists($mimeType, $allowedTypes)) {
+                    $message = "Only JPG, PNG, and WEBP images are allowed.";
+                    $messageType = "error";
+                    $uploadOk = false;
+                } else {
+                    $extension = $allowedTypes[$mimeType];
+                    $uploadDir = __DIR__ . "/uploads/profile_pictures";
+
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+
+                    $fileName = "user_" . $userId . "_" . bin2hex(random_bytes(8)) . $extension;
+                    $destination = $uploadDir . "/" . $fileName;
+
+                    if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $destination)) {
+                        $profilePicturePath = "uploads/profile_pictures/" . $fileName;
+                    } else {
+                        $message = "Failed to save profile picture.";
+                        $messageType = "error";
+                        $uploadOk = false;
+                    }
+                }
+            }
+        }
+    }
 
     if (empty($name) || empty($email)) {
         $message = "Name and email are required.";
         $messageType = "error";
-    } else {
+    } elseif ($uploadOk) {
         $checkSql = "SELECT id FROM users WHERE email = ? AND id != ?";
         $checkStmt = $conn->prepare($checkSql);
 
@@ -55,14 +112,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     } else {
                         $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
 
-                        $sql = "UPDATE users SET name = ?, email = ?, password = ? WHERE id = ?";
+                        $sql = "UPDATE users SET name = ?, email = ?, password = ?, bio = ?, school = ?, specialization = ?, skills = ?, profile_picture = COALESCE(?, profile_picture) WHERE id = ?";
                         $stmt = $conn->prepare($sql);
 
                         if (!$stmt) {
                             $message = "Something went wrong.";
                             $messageType = "error";
                         } else {
-                            $stmt->bind_param("sssi", $name, $email, $hashedPassword, $userId);
+                            $stmt->bind_param("ssssssssi", $name, $email, $hashedPassword, $bio, $school, $specialization, $skills, $profilePicturePath, $userId);
 
                             if ($stmt->execute()) {
                                 $_SESSION["user_name"] = $name;
@@ -78,14 +135,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         }
                     }
                 } else {
-                    $sql = "UPDATE users SET name = ?, email = ? WHERE id = ?";
+                    $sql = "UPDATE users SET name = ?, email = ?, bio = ?, school = ?, specialization = ?, skills = ?, profile_picture = COALESCE(?, profile_picture) WHERE id = ?";
                     $stmt = $conn->prepare($sql);
 
                     if (!$stmt) {
                         $message = "Something went wrong.";
                         $messageType = "error";
                     } else {
-                        $stmt->bind_param("ssi", $name, $email, $userId);
+                        $stmt->bind_param("sssssssi", $name, $email, $bio, $school, $specialization, $skills, $profilePicturePath, $userId);
 
                         if ($stmt->execute()) {
                             $_SESSION["user_name"] = $name;
@@ -105,14 +162,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 
-$sql = "SELECT name, email FROM users WHERE id = ?";
+$sql = "SELECT name, email, bio, school, specialization, skills FROM users WHERE id = ?";
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
     die("Something went wrong.");
 }
 
-$stmt->bind_param("i", $userId);
+    $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
 
@@ -153,7 +210,7 @@ $conn->close();
       </div>
     <?php endif; ?>
 
-    <form method="POST" action="edit-profile.php" class="space-y-5">
+    <form method="POST" action="edit-profile.php" enctype="multipart/form-data" class="space-y-5">
       <div>
         <label class="block text-sm text-gray-300 mb-2">Full Name</label>
         <input
@@ -174,6 +231,64 @@ $conn->close();
           required
           class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-4 outline-none border border-white/10"
         />
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-300 mb-2">Profile Picture (optional)</label>
+        <input
+          type="file"
+          name="profile_picture"
+          accept="image/*"
+          class="w-full text-sm text-gray-200 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-fuchsia-600 file:text-white hover:file:bg-fuchsia-700"
+        />
+        <p class="mt-1 text-xs text-gray-300">
+          JPG, PNG, or WEBP. Max size 2MB.
+        </p>
+      </div>
+
+      <div>
+        <label class="block text-sm text-gray-300 mb-2">Bio</label>
+        <textarea
+          name="bio"
+          rows="3"
+          placeholder="Share a short introduction about your IT journey."
+          class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-4 outline-none border border-white/10"
+        ><?php echo htmlspecialchars($user["bio"] ?? ""); ?></textarea>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div>
+          <label class="block text-sm text-gray-300 mb-2">School</label>
+          <input
+            type="text"
+            name="school"
+            value="<?php echo htmlspecialchars($user["school"] ?? ""); ?>"
+            placeholder="e.g. IT University"
+            class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-3 outline-none border border-white/10"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-300 mb-2">Specialization</label>
+          <input
+            type="text"
+            name="specialization"
+            value="<?php echo htmlspecialchars($user["specialization"] ?? ""); ?>"
+            placeholder="e.g. Web Development"
+            class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-3 outline-none border border-white/10"
+          />
+        </div>
+
+        <div>
+          <label class="block text-sm text-gray-300 mb-2">Skills</label>
+          <input
+            type="text"
+            name="skills"
+            value="<?php echo htmlspecialchars($user["skills"] ?? ""); ?>"
+            placeholder="e.g. PHP, MySQL, Tailwind"
+            class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-3 outline-none border border-white/10"
+          />
+        </div>
       </div>
 
       <div>
