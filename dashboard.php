@@ -100,6 +100,13 @@ $conn->close();
             </a>
 
             <a
+              href="community.php"
+              class="px-6 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 transition font-semibold"
+            >
+              Community
+            </a>
+
+            <a
               href="index.php"
               class="px-6 py-3 rounded-xl border border-white/30 hover:bg-white/10 transition"
             >
