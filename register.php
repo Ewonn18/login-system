@@ -1,7 +1,18 @@
 <?php
+session_start();
 include "db.php";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $csrfToken = $_POST["csrf_token"] ?? "";
+    $sessionToken = $_SESSION["csrf_token"] ?? "";
+
+    if (empty($csrfToken) || empty($sessionToken) || !hash_equals($sessionToken, $csrfToken)) {
+        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Invalid request. Please try again."));
+        exit();
+    }
+
+    unset($_SESSION["csrf_token"]);
+
     $name = trim($_POST["name"] ?? "");
     $email = trim($_POST["email"] ?? "");
     $password = trim($_POST["password"] ?? "");
