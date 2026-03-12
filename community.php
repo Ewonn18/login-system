@@ -14,44 +14,103 @@ $message = "";
 $messageType = "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $title = trim($_POST["title"] ?? "");
-    $category = trim($_POST["category"] ?? "");
-    $content = trim($_POST["content"] ?? "");
+    $formType = $_POST["form_type"] ?? "";
 
-    if ($title === "" || $category === "" || $content === "") {
-        $message = "All fields are required.";
-        $messageType = "error";
-    } else {
-        $sql = "INSERT INTO posts (user_id, title, category, content, author_name) VALUES (?, ?, ?, ?, ?)";
-        $stmt = $conn->prepare($sql);
+    if ($formType === "post") {
+        $title = trim($_POST["title"] ?? "");
+        $category = trim($_POST["category"] ?? "");
+        $content = trim($_POST["content"] ?? "");
 
-        if (!$stmt) {
-            $message = "Something went wrong. Please try again.";
+        if ($title === "" || $category === "" || $content === "") {
+            $message = "All post fields are required.";
             $messageType = "error";
         } else {
-            $stmt->bind_param("issss", $userId, $title, $category, $content, $userName);
+            $sql = "INSERT INTO posts (user_id, title, category, content, author_name) VALUES (?, ?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
 
-            if ($stmt->execute()) {
-                $message = "Your post has been shared.";
-                $messageType = "success";
-            } else {
-                $message = "Could not save your post. Please try again.";
+            if (!$stmt) {
+                $message = "Something went wrong. Please try again.";
                 $messageType = "error";
-            }
+            } else {
+                $stmt->bind_param("issss", $userId, $title, $category, $content, $userName);
 
-            $stmt->close();
+                if ($stmt->execute()) {
+                    $message = "Your post has been shared.";
+                    $messageType = "success";
+                } else {
+                    $message = "Could not save your post. Please try again.";
+                    $messageType = "error";
+                }
+
+                $stmt->close();
+            }
+        }
+    } elseif ($formType === "comment") {
+        $postId = (int)($_POST["post_id"] ?? 0);
+        $commentContent = trim($_POST["comment_content"] ?? "");
+
+        if ($postId <= 0 || $commentContent === "") {
+            $message = "Please enter a comment before submitting.";
+            $messageType = "error";
+        } else {
+            $sql = "INSERT INTO comments (post_id, user_id, author_name, content) VALUES (?, ?, ?, ?)";
+            $stmt = $conn->prepare($sql);
+
+            if (!$stmt) {
+                $message = "Something went wrong while saving your comment.";
+                $messageType = "error";
+            } else {
+                $stmt->bind_param("iiss", $postId, $userId, $userName, $commentContent);
+
+                if ($stmt->execute()) {
+                    $message = "Your comment has been added.";
+                    $messageType = "success";
+                } else {
+                    $message = "Could not save your comment. Please try again.";
+                    $messageType = "error";
+                }
+
+                $stmt->close();
+            }
         }
     }
 }
 
 $posts = [];
 
-$postsSql = "SELECT title, category, content, author_name, created_at FROM posts ORDER BY created_at DESC";
+$postsSql = "SELECT id, title, category, content, author_name, created_at FROM posts ORDER BY created_at DESC";
 $postsResult = $conn->query($postsSql);
 
 if ($postsResult && $postsResult->num_rows > 0) {
     while ($row = $postsResult->fetch_assoc()) {
-        $posts[] = $row;
+        $row["comments"] = [];
+        $posts[$row["id"]] = $row;
+    }
+}
+
+if (!empty($posts)) {
+    $postIds = array_keys($posts);
+    $placeholders = implode(",", array_fill(0, count($postIds), "?"));
+
+    $types = str_repeat("i", count($postIds));
+    $sqlComments = "SELECT post_id, author_name, content, created_at FROM comments WHERE post_id IN ($placeholders) ORDER BY created_at ASC";
+    $stmtComments = $conn->prepare($sqlComments);
+
+    if ($stmtComments) {
+        $stmtComments->bind_param($types, ...$postIds);
+        $stmtComments->execute();
+        $resultComments = $stmtComments->get_result();
+
+        if ($resultComments && $resultComments->num_rows > 0) {
+            while ($commentRow = $resultComments->fetch_assoc()) {
+                $postId = (int)$commentRow["post_id"];
+                if (isset($posts[$postId])) {
+                    $posts[$postId]["comments"][] = $commentRow;
+                }
+            }
+        }
+
+        $stmtComments->close();
     }
 }
 
@@ -62,124 +121,201 @@ $conn->close();
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Community - IT Journeys & Tips</title>
+  <title>Community Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4 py-10">
-  <div class="w-full max-w-5xl bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl overflow-hidden">
-    <div class="bg-gradient-to-r from-violet-500 to-fuchsia-600 p-8 text-white flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">
+  <div class="w-full max-w-5xl bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
+
+    <!-- Top bar -->
+    <header class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-900 border-b border-slate-800 px-6 md:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
-        <h1 class="text-3xl md:text-4xl font-bold">Community Space</h1>
-        <p class="mt-2 text-white/90">Share your IT journey, knowledge, and tips with others.</p>
+        <p class="text-xs uppercase tracking-[0.25em] text-slate-400">IT Community Hub</p>
+        <h1 class="mt-2 text-2xl md:text-3xl font-semibold text-slate-50">
+          Share your journey, learn from others.
+        </h1>
+        <p class="mt-1 text-sm text-slate-400">
+          Post your experiences, tips, and questions with fellow developers.
+        </p>
       </div>
       <div class="flex gap-3">
         <a
           href="dashboard.php"
-          class="px-4 py-2 rounded-xl bg-white/10 border border-white/30 hover:bg-white/20 transition text-sm font-semibold"
+          class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 text-xs md:text-sm font-medium text-slate-100 transition"
         >
-          Back to Dashboard
+          Back to dashboard
         </a>
         <a
           href="logout.php"
-          class="px-4 py-2 rounded-xl bg-fuchsia-700 hover:bg-fuchsia-800 transition text-sm font-semibold"
+          class="px-4 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-xs md:text-sm font-medium text-white shadow-md shadow-rose-500/30 transition"
         >
-          Logout
+          Sign out
         </a>
       </div>
-    </div>
+    </header>
 
-    <div class="p-6 md:p-8 text-white space-y-8">
+    <main class="p-6 md:p-8 space-y-8">
       <?php if (!empty($message)): ?>
-        <div class="w-full">
-          <div class="<?php echo $messageType === 'success' ? 'bg-green-500/90 border-green-300' : 'bg-red-500/90 border-red-300'; ?> border rounded-xl px-4 py-3 text-sm">
-            <?php echo htmlspecialchars($message); ?>
-          </div>
+        <div class="<?php echo $messageType === 'success' ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-200' : 'bg-rose-500/10 border-rose-500/60 text-rose-200'; ?> border rounded-2xl px-4 py-3 text-xs md:text-sm">
+          <?php echo htmlspecialchars($message); ?>
         </div>
       <?php endif; ?>
 
-      <section class="bg-white/10 rounded-2xl p-6 border border-white/10">
-        <h2 class="text-2xl font-semibold mb-4">Create a Post</h2>
-        <form method="POST" class="space-y-4">
+      <!-- Top: Create post panel -->
+      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6">
+        <h2 class="text-base md:text-lg font-semibold text-slate-100">Create a new post</h2>
+        <p class="mt-1 text-xs md:text-sm text-slate-400">
+          Share an IT story, concept, or tip with the community.
+        </p>
+
+        <form method="POST" class="mt-4 space-y-4">
+          <input type="hidden" name="form_type" value="post" />
+
           <div>
-            <label class="block text-sm text-gray-200 mb-1" for="title">Title</label>
+            <label class="block text-xs md:text-sm text-slate-300 mb-1" for="title">Title</label>
             <input
               type="text"
               id="title"
               name="title"
               required
-              class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-4 py-3 outline-none border border-white/10"
-              placeholder="Share something about your IT journey..."
+              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+              placeholder="e.g. How I learned PHP and MySQL"
             />
           </div>
 
-          <div>
-            <label class="block text-sm text-gray-200 mb-1" for="category">Category</label>
-            <input
-              type="text"
-              id="category"
-              name="category"
-              required
-              class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-4 py-3 outline-none border border-white/10"
-              placeholder="e.g. Web Development, Networking, Career Tips"
-            />
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs md:text-sm text-slate-300 mb-1" for="category">Category</label>
+              <input
+                type="text"
+                id="category"
+                name="category"
+                required
+                class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                placeholder="e.g. Web Development, Networking, Career Tips"
+              />
+            </div>
           </div>
 
           <div>
-            <label class="block text-sm text-gray-200 mb-1" for="content">Content</label>
+            <label class="block text-xs md:text-sm text-slate-300 mb-1" for="content">Content</label>
             <textarea
               id="content"
               name="content"
-              rows="5"
+              rows="4"
               required
-              class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-4 py-3 outline-none border border-white/10"
+              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
               placeholder="Write about your experience, a lesson you learned, or a useful tip..."
             ></textarea>
           </div>
 
           <button
             type="submit"
-            class="mt-2 bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold uppercase tracking-wide px-8 py-3 rounded-xl shadow-lg transition text-sm"
+            class="inline-flex items-center gap-2 mt-1 rounded-xl bg-sky-600/90 hover:bg-sky-500 text-xs md:text-sm font-medium text-white px-5 py-2.5 shadow-md shadow-sky-500/30 transition"
           >
-            Share Post
+            Share post
           </button>
         </form>
       </section>
 
-      <section>
-        <h2 class="text-2xl font-semibold mb-4">Community Posts</h2>
+      <!-- Bottom: Community feed -->
+      <section class="space-y-4">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-base md:text-lg font-semibold text-slate-100">Community posts</h2>
+          <p class="text-xs text-slate-400">Latest posts from members of the IT community.</p>
+        </div>
 
         <?php if (empty($posts)): ?>
-          <p class="text-gray-300 text-sm">No posts yet. Be the first to share something!</p>
+          <p class="text-slate-400 text-xs md:text-sm">No posts yet. Be the first to share something!</p>
         <?php else: ?>
-          <div class="space-y-4 max-h-[500px] overflow-y-auto pr-1">
+          <div class="space-y-4 max-h-[520px] overflow-y-auto pr-1">
             <?php foreach ($posts as $post): ?>
-              <article class="bg-white/10 rounded-2xl p-5 border border-white/10">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
-                  <h3 class="text-xl font-semibold"><?php echo htmlspecialchars($post["title"]); ?></h3>
-                  <span class="px-3 py-1 rounded-full bg-fuchsia-600/80 text-xs font-semibold">
-                    <?php echo htmlspecialchars($post["category"]); ?>
-                  </span>
+              <article class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 md:p-5 space-y-4">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <h3 class="text-sm md:text-base font-semibold text-slate-50">
+                      <?php echo htmlspecialchars($post["title"]); ?>
+                    </h3>
+                    <p class="mt-1 text-xs text-slate-400">
+                      By <?php echo htmlspecialchars($post["author_name"]); ?>
+                    </p>
+                  </div>
+                  <div class="flex flex-col items-end gap-1">
+                    <span class="inline-flex items-center rounded-full bg-sky-600/80 text-[11px] md:text-xs font-semibold px-3 py-1 text-white">
+                      <?php echo htmlspecialchars($post["category"]); ?>
+                    </span>
+                    <span class="text-[11px] md:text-xs text-slate-400">
+                      <?php
+                        $date = strtotime($post["created_at"]);
+                        echo date("M j, Y · g:i A", $date);
+                      ?>
+                    </span>
+                  </div>
                 </div>
 
-                <p class="text-gray-100 text-sm whitespace-pre-line mb-4">
+                <p class="text-slate-100 text-xs md:text-sm whitespace-pre-line">
                   <?php echo nl2br(htmlspecialchars($post["content"])); ?>
                 </p>
 
-                <div class="flex flex-wrap items-center justify-between text-xs text-gray-300">
-                  <span>By <?php echo htmlspecialchars($post["author_name"]); ?></span>
-                  <span>
-                    <?php
-                      $date = strtotime($post["created_at"]);
-                      echo date("F j, Y \\a\\t g:i A", $date);
-                    ?>
-                  </span>
+                <!-- Comments -->
+                <div class="border-t border-slate-800 pt-4 space-y-3">
+                  <h4 class="text-xs md:text-sm font-semibold text-slate-200">Comments</h4>
+
+                  <?php if (empty($post["comments"])): ?>
+                    <p class="text-[11px] md:text-xs text-slate-500">
+                      No comments yet. Start the conversation.
+                    </p>
+                  <?php else: ?>
+                    <div class="space-y-2">
+                      <?php foreach ($post["comments"] as $comment): ?>
+                        <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-3 py-2">
+                          <div class="flex items-center justify-between gap-2">
+                            <span class="text-[11px] md:text-xs font-medium text-slate-200">
+                              <?php echo htmlspecialchars($comment["author_name"]); ?>
+                            </span>
+                            <span class="text-[10px] md:text-[11px] text-slate-500">
+                              <?php
+                                $cDate = strtotime($comment["created_at"]);
+                                echo date("M j, Y · g:i A", $cDate);
+                              ?>
+                            </span>
+                          </div>
+                          <p class="mt-1 text-[11px] md:text-xs text-slate-200 whitespace-pre-line">
+                            <?php echo nl2br(htmlspecialchars($comment["content"])); ?>
+                          </p>
+                        </div>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php endif; ?>
+
+                  <!-- Add comment form -->
+                  <form method="POST" class="mt-2 space-y-2">
+                    <input type="hidden" name="form_type" value="comment" />
+                    <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>" />
+                    <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="comment_<?php echo (int)$post["id"]; ?>">
+                      Add your insight
+                    </label>
+                    <textarea
+                      id="comment_<?php echo (int)$post["id"]; ?>"
+                      name="comment_content"
+                      rows="2"
+                      class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-[11px] md:text-xs"
+                      placeholder="Share a short comment, tip, or question..."
+                    ></textarea>
+                    <button
+                      type="submit"
+                      class="inline-flex items-center gap-1 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-[11px] md:text-xs font-medium text-white px-3 py-1.5 shadow-md shadow-emerald-500/30 transition"
+                    >
+                      Post comment
+                    </button>
+                  </form>
                 </div>
               </article>
             <?php endforeach; ?>
           </div>
         <?php endif; ?>
       </section>
-    </div>
+    </main>
   </div>
 </body>
 </html>
