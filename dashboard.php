@@ -141,13 +141,19 @@ $conn->close();
             </div>
 
             <div class="flex flex-col gap-1">
-              <p class="text-sm text-slate-400">Specialization</p>
-              <p class="text-sm font-medium text-slate-200">
+              <p class="text-sm text-slate-400">Profile badge</p>
+              <div class="mt-1">
                 <?php
                   $specialization = trim($user["specialization"] ?? "");
-                  echo $specialization !== "" ? htmlspecialchars($specialization) : "Not specified";
+                  if ($specialization !== ""): ?>
+                    <span class="inline-flex items-center rounded-full bg-sky-600/15 border border-sky-500/40 text-[11px] font-medium text-sky-200 px-3 py-1">
+                      <?php echo htmlspecialchars($specialization); ?>
+                    </span>
+                  <?php else: ?>
+                    <span class="text-sm font-medium text-slate-300">No badge selected</span>
+                  <?php endif;
                 ?>
-              </p>
+              </div>
             </div>
 
             <div class="flex flex-col gap-1">
