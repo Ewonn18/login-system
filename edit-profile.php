@@ -270,13 +270,34 @@ $conn->close();
 
         <div>
           <label class="block text-sm text-gray-300 mb-2">Specialization</label>
-          <input
-            type="text"
+          <select
             name="specialization"
-            value="<?php echo htmlspecialchars($user["specialization"] ?? ""); ?>"
-            placeholder="e.g. Web Development"
-            class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-3 outline-none border border-white/10"
-          />
+            class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-3 outline-none border border-white/10 text-sm"
+          >
+            <?php
+              $currentSpec = trim($user["specialization"] ?? "");
+              $options = [
+                  "Frontend Learner",
+                  "Backend Explorer",
+                  "Full Stack Starter",
+                  "Networking Enthusiast",
+                  "UI/UX Beginner",
+                  "Database Builder",
+                  "Security Curious",
+                  "Career Builder",
+                  "Cloud Rookie",
+              ];
+            ?>
+            <option value="" <?php echo $currentSpec === '' ? 'selected' : ''; ?>>Select a specialization badge</option>
+            <?php foreach ($options as $opt): ?>
+              <option value="<?php echo htmlspecialchars($opt); ?>" <?php echo $currentSpec === $opt ? 'selected' : ''; ?>>
+                <?php echo htmlspecialchars($opt); ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
+          <p class="mt-1 text-xs text-gray-300">
+            Choose a simple badge that best matches your current IT focus.
+          </p>
         </div>
 
         <div>
