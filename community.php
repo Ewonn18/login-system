@@ -13,6 +13,8 @@ $userName = $_SESSION["user_name"] ?? "Unknown User";
 $message = "";
 $messageType = "";
 
+$editPostId = isset($_GET["edit_post_id"]) ? (int)$_GET["edit_post_id"] : 0;
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $formType = $_POST["form_type"] ?? "";
 
@@ -73,12 +75,71 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $stmt->close();
             }
         }
+    } elseif ($formType === "update_post") {
+        $postId = (int)($_POST["post_id"] ?? 0);
+        $title = trim($_POST["title"] ?? "");
+        $category = trim($_POST["category"] ?? "");
+        $content = trim($_POST["content"] ?? "");
+
+        if ($postId <= 0 || $title === "" || $category === "" || $content === "") {
+            $message = "All post fields are required to update.";
+            $messageType = "error";
+        } else {
+            $sql = "UPDATE posts SET title = ?, category = ?, content = ? WHERE id = ? AND user_id = ?";
+            $stmt = $conn->prepare($sql);
+
+            if (!$stmt) {
+                $message = "Something went wrong while updating your post.";
+                $messageType = "error";
+            } else {
+                $stmt->bind_param("sssii", $title, $category, $content, $postId, $userId);
+                $stmt->execute();
+
+                if ($stmt->affected_rows > 0) {
+                    $message = "Your post has been updated.";
+                    $messageType = "success";
+                } else {
+                    $message = "Could not update this post. Make sure it still exists and belongs to you.";
+                    $messageType = "error";
+                }
+
+                $stmt->close();
+            }
+        }
+    } elseif ($formType === "delete_post") {
+        $postId = (int)($_POST["post_id"] ?? 0);
+
+        if ($postId <= 0) {
+            $message = "Could not delete this post.";
+            $messageType = "error";
+        } else {
+            $sql = "DELETE FROM posts WHERE id = ? AND user_id = ?";
+            $stmt = $conn->prepare($sql);
+
+            if (!$stmt) {
+                $message = "Something went wrong while deleting your post.";
+                $messageType = "error";
+            } else {
+                $stmt->bind_param("ii", $postId, $userId);
+                $stmt->execute();
+
+                if ($stmt->affected_rows > 0) {
+                    $message = "Your post has been deleted.";
+                    $messageType = "success";
+                } else {
+                    $message = "Could not delete this post. Make sure it still exists and belongs to you.";
+                    $messageType = "error";
+                }
+
+                $stmt->close();
+            }
+        }
     }
 }
 
 $posts = [];
 
-$postsSql = "SELECT id, title, category, content, author_name, created_at FROM posts ORDER BY created_at DESC";
+$postsSql = "SELECT id, user_id, title, category, content, author_name, created_at FROM posts ORDER BY created_at DESC";
 $postsResult = $conn->query($postsSql);
 
 if ($postsResult && $postsResult->num_rows > 0) {
@@ -250,12 +311,85 @@ $conn->close();
                         echo date("M j, Y · g:i A", $date);
                       ?>
                     </span>
+                    <?php if ((int)$post["user_id"] === (int)$userId): ?>
+                      <div class="mt-1 flex gap-1">
+                        <a
+                          href="community.php?edit_post_id=<?php echo (int)$post["id"]; ?>"
+                          class="inline-flex items-center rounded-lg border border-slate-600/80 bg-slate-900/80 hover:bg-slate-800/80 text-[10px] md:text-[11px] px-2 py-1 text-slate-100 transition"
+                        >
+                          Edit
+                        </a>
+                        <form method="POST" onsubmit="return confirm('Delete this post? This cannot be undone.');">
+                          <input type="hidden" name="form_type" value="delete_post" />
+                          <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>" />
+                          <button
+                            type="submit"
+                            class="inline-flex items-center rounded-lg bg-rose-600/90 hover:bg-rose-500 text-[10px] md:text-[11px] px-2 py-1 text-white transition"
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      </div>
+                    <?php endif; ?>
                   </div>
                 </div>
 
-                <p class="text-slate-100 text-xs md:text-sm whitespace-pre-line">
-                  <?php echo nl2br(htmlspecialchars($post["content"])); ?>
-                </p>
+                <?php if ($editPostId === (int)$post["id"] && (int)$post["user_id"] === (int)$userId): ?>
+                  <form method="POST" class="space-y-3 bg-slate-900/80 border border-slate-800 rounded-2xl p-3 md:p-4">
+                    <input type="hidden" name="form_type" value="update_post" />
+                    <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>" />
+                    <div>
+                      <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="edit_title_<?php echo (int)$post["id"]; ?>">Title</label>
+                      <input
+                        id="edit_title_<?php echo (int)$post["id"]; ?>"
+                        type="text"
+                        name="title"
+                        value="<?php echo htmlspecialchars($post["title"]); ?>"
+                        required
+                        class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-[11px] md:text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="edit_category_<?php echo (int)$post["id"]; ?>">Category</label>
+                      <input
+                        id="edit_category_<?php echo (int)$post["id"]; ?>"
+                        type="text"
+                        name="category"
+                        value="<?php echo htmlspecialchars($post["category"]); ?>"
+                        required
+                        class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-[11px] md:text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="edit_content_<?php echo (int)$post["id"]; ?>">Content</label>
+                      <textarea
+                        id="edit_content_<?php echo (int)$post["id"]; ?>"
+                        name="content"
+                        rows="3"
+                        required
+                        class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-[11px] md:text-xs"
+                      ><?php echo htmlspecialchars($post["content"]); ?></textarea>
+                    </div>
+                    <div class="flex flex-wrap gap-2">
+                      <button
+                        type="submit"
+                        class="inline-flex items-center rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-[11px] md:text-xs font-medium text-white px-3 py-1.5 shadow-md shadow-emerald-500/30 transition"
+                      >
+                        Save changes
+                      </button>
+                      <a
+                        href="community.php"
+                        class="inline-flex items-center rounded-xl border border-slate-600/80 bg-slate-900/80 hover:bg-slate-800/80 text-[11px] md:text-xs font-medium text-slate-100 px-3 py-1.5 transition"
+                      >
+                        Cancel
+                      </a>
+                    </div>
+                  </form>
+                <?php else: ?>
+                  <p class="text-slate-100 text-xs md:text-sm whitespace-pre-line">
+                    <?php echo nl2br(htmlspecialchars($post["content"])); ?>
+                  </p>
+                <?php endif; ?>
 
                 <!-- Comments -->
                 <div class="border-t border-slate-800 pt-4 space-y-3">
