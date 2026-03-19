@@ -1,31 +1,31 @@
 <?php
-session_start();
+require_once "session.php";
 require_once "csrf.php";
-include "db.php";
 
 $csrfToken = get_csrf_token();
-$email = isset($_GET["email"]) ? trim($_GET["email"]) : "";
+$selector = isset($_GET["selector"]) ? trim($_GET["selector"]) : "";
+$validator = isset($_GET["validator"]) ? trim($_GET["validator"]) : "";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $postedToken = $_POST["csrf_token"] ?? "";
 
     if (!is_valid_csrf_token($postedToken)) {
-        $emailRedirect = trim($_POST["email"] ?? "");
-        header("Location: reset-password.php?email=" . urlencode($emailRedirect) . "&type=error&message=" . urlencode("Invalid request. Please refresh the page and try again."));
+        header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid request. Please refresh the page and try again."));
         exit();
     }
 
-    $email = trim($_POST["email"] ?? "");
+    $selector = trim($_POST["selector"] ?? "");
+    $validator = trim($_POST["validator"] ?? "");
     $newPassword = trim($_POST["new_password"] ?? "");
     $confirmPassword = trim($_POST["confirm_password"] ?? "");
 
-    if (empty($email) || empty($newPassword) || empty($confirmPassword)) {
-        header("Location: reset-password.php?email=" . urlencode($email) . "&type=error&message=" . urlencode("All fields are required."));
+    if (empty($selector) || empty($validator) || empty($newPassword) || empty($confirmPassword)) {
+        header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid password reset request."));
         exit();
     }
 
     if ($newPassword !== $confirmPassword) {
-        header("Location: reset-password.php?email=" . urlencode($email) . "&type=error&message=" . urlencode("Passwords do not match."));
+        header("Location: reset-password.php?selector=" . urlencode($selector) . "&validator=" . urlencode($validator) . "&type=error&message=" . urlencode("Passwords do not match."));
         exit();
     }
 
@@ -36,36 +36,80 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         !preg_match('/[0-9]/', $newPassword) ||
         !preg_match('/[^A-Za-z0-9]/', $newPassword)
     ) {
-        header("Location: reset-password.php?email=" . urlencode($email) . "&type=error&message=" . urlencode("Password must be at least 8 characters and include uppercase, lowercase, number, and symbol."));
+        header("Location: reset-password.php?selector=" . urlencode($selector) . "&validator=" . urlencode($validator) . "&type=error&message=" . urlencode("Password must be at least 8 characters and include uppercase, lowercase, number, and symbol."));
+        exit();
+    }
+
+    $sql = "SELECT id, user_id, token_hash, expires_at, used_at
+            FROM password_resets
+            WHERE selector = ?
+            LIMIT 1";
+    $stmt = $conn->prepare($sql);
+
+    if (!$stmt) {
+        header("Location: forgot-password.php?type=error&message=" . urlencode("Something went wrong."));
+        exit();
+    }
+
+    $stmt->bind_param("s", $selector);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    if (!$result || $result->num_rows !== 1) {
+        $stmt->close();
+        $conn->close();
+        header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid or expired reset link."));
+        exit();
+    }
+
+    $resetRow = $result->fetch_assoc();
+    $stmt->close();
+
+    $isExpired = strtotime($resetRow["expires_at"]) < time();
+    $isUsed = !empty($resetRow["used_at"]);
+    $isValidToken = hash_equals($resetRow["token_hash"], hash("sha256", $validator));
+
+    if ($isExpired || $isUsed || !$isValidToken) {
+        $conn->close();
+        header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid or expired reset link."));
         exit();
     }
 
     $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
 
-    $sql = "UPDATE users SET password = ? WHERE email = ?";
-    $stmt = $conn->prepare($sql);
-
-    if (!$stmt) {
-        header("Location: reset-password.php?email=" . urlencode($email) . "&type=error&message=" . urlencode("Something went wrong."));
+    $updateUser = $conn->prepare("UPDATE users SET password = ? WHERE id = ?");
+    if (!$updateUser) {
+        $conn->close();
+        header("Location: forgot-password.php?type=error&message=" . urlencode("Something went wrong."));
         exit();
     }
 
-    $stmt->bind_param("ss", $hashedPassword, $email);
+    $userId = (int)$resetRow["user_id"];
+    $updateUser->bind_param("si", $hashedPassword, $userId);
+    $updateUser->execute();
+    $updateUser->close();
 
-    if ($stmt->execute()) {
-        $stmt->close();
-        $conn->close();
-        header("Location: index.php?panel=signin&type=success&message=" . urlencode("Password updated successfully. You can now sign in."));
-        exit();
-    } else {
-        $stmt->close();
-        $conn->close();
-        header("Location: reset-password.php?email=" . urlencode($email) . "&type=error&message=" . urlencode("Failed to reset password."));
-        exit();
+    $markUsed = $conn->prepare("UPDATE password_resets SET used_at = NOW() WHERE id = ?");
+    if ($markUsed) {
+        $resetId = (int)$resetRow["id"];
+        $markUsed->bind_param("i", $resetId);
+        $markUsed->execute();
+        $markUsed->close();
     }
+
+    $deleteRemember = $conn->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+    if ($deleteRemember) {
+        $deleteRemember->bind_param("i", $userId);
+        $deleteRemember->execute();
+        $deleteRemember->close();
+    }
+
+    $conn->close();
+    header("Location: index.php?panel=signin&type=success&message=" . urlencode("Password updated successfully. You can now sign in."));
+    exit();
 }
 
-if (empty($email)) {
+if (empty($selector) || empty($validator)) {
     header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid password reset request."));
     exit();
 }
@@ -85,10 +129,7 @@ if (isset($_GET["message"]) && isset($_GET["type"])) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TechTrail Community - Reset Password</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
-  >
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">
   <div class="w-full max-w-md bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
@@ -107,7 +148,8 @@ if (isset($_GET["message"]) && isset($_GET["type"])) {
 
       <form method="POST" action="reset-password.php" class="space-y-4">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-        <input type="hidden" name="email" value="<?php echo htmlspecialchars($email); ?>">
+        <input type="hidden" name="selector" value="<?php echo htmlspecialchars($selector); ?>">
+        <input type="hidden" name="validator" value="<?php echo htmlspecialchars($validator); ?>">
 
         <div class="relative">
           <label class="block text-sm text-slate-300 mb-2">New Password</label>

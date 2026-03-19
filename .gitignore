@@ -1,0 +1,5 @@
+/config.php
+/uploads/profile_pictures/
+.env
+.DS_Store
+Thumbs.db

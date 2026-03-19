@@ -1,9 +1,8 @@
 <?php
-session_start();
+require_once "session.php";
 require_once "auth.php";
 require_once "csrf.php";
 require_auth();
-include "db.php";
 
 $csrfToken = get_csrf_token();
 $userId = $_SESSION["user_id"];
@@ -26,7 +25,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $newPassword = trim($_POST["new_password"] ?? "");
         $confirmPassword = trim($_POST["confirm_password"] ?? "");
         $profilePicturePath = null;
-
         $uploadOk = true;
 
         if (isset($_FILES["profile_picture"]) && $_FILES["profile_picture"]["error"] !== UPLOAD_ERR_NO_FILE) {
@@ -42,37 +40,74 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                     $messageType = "error";
                     $uploadOk = false;
                 } else {
-                    $finfo = finfo_open(FILEINFO_MIME_TYPE);
-                    $mimeType = finfo_file($finfo, $_FILES["profile_picture"]["tmp_name"]);
-                    finfo_close($finfo);
+                    $imageInfo = @getimagesize($_FILES["profile_picture"]["tmp_name"]);
 
-                    $allowedTypes = [
-                        "image/jpeg" => ".jpg",
-                        "image/png" => ".png",
-                        "image/webp" => ".webp",
-                    ];
-
-                    if (!array_key_exists($mimeType, $allowedTypes)) {
-                        $message = "Only JPG, PNG, and WEBP images are allowed.";
+                    if ($imageInfo === false) {
+                        $message = "Uploaded file is not a valid image.";
                         $messageType = "error";
                         $uploadOk = false;
                     } else {
-                        $extension = $allowedTypes[$mimeType];
-                        $uploadDir = __DIR__ . "/uploads/profile_pictures";
+                        $mimeType = $imageInfo["mime"];
+                        $width = $imageInfo[0];
+                        $height = $imageInfo[1];
 
-                        if (!is_dir($uploadDir)) {
-                            mkdir($uploadDir, 0755, true);
-                        }
+                        $allowedTypes = [
+                            "image/jpeg" => ".jpg",
+                            "image/png" => ".png",
+                            "image/webp" => ".webp",
+                        ];
 
-                        $fileName = "user_" . $userId . "_" . bin2hex(random_bytes(8)) . $extension;
-                        $destination = $uploadDir . "/" . $fileName;
-
-                        if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $destination)) {
-                            $profilePicturePath = "uploads/profile_pictures/" . $fileName;
-                        } else {
-                            $message = "Failed to save profile picture.";
+                        if (!array_key_exists($mimeType, $allowedTypes)) {
+                            $message = "Only JPG, PNG, and WEBP images are allowed.";
                             $messageType = "error";
                             $uploadOk = false;
+                        } elseif ($width < 100 || $height < 100) {
+                            $message = "Image must be at least 100x100 pixels.";
+                            $messageType = "error";
+                            $uploadOk = false;
+                        } elseif ($width > 3000 || $height > 3000) {
+                            $message = "Image dimensions are too large.";
+                            $messageType = "error";
+                            $uploadOk = false;
+                        } else {
+                            $extension = $allowedTypes[$mimeType];
+                            $uploadDir = __DIR__ . "/uploads/profile_pictures";
+
+                            if (!is_dir($uploadDir)) {
+                                mkdir($uploadDir, 0755, true);
+                            }
+
+                            $fileName = "user_" . $userId . "_" . bin2hex(random_bytes(8)) . $extension;
+                            $destination = $uploadDir . "/" . $fileName;
+
+                            if (move_uploaded_file($_FILES["profile_picture"]["tmp_name"], $destination)) {
+                                $profilePicturePath = "uploads/profile_pictures/" . $fileName;
+
+                                $oldStmt = $conn->prepare("SELECT profile_picture FROM users WHERE id = ?");
+                                if ($oldStmt) {
+                                    $oldStmt->bind_param("i", $userId);
+                                    $oldStmt->execute();
+                                    $oldResult = $oldStmt->get_result();
+
+                                    if ($oldResult && $oldResult->num_rows === 1) {
+                                        $oldRow = $oldResult->fetch_assoc();
+                                        $oldPath = $oldRow["profile_picture"] ?? "";
+
+                                        if (!empty($oldPath)) {
+                                            $fullOldPath = __DIR__ . "/" . $oldPath;
+                                            if (is_file($fullOldPath)) {
+                                                @unlink($fullOldPath);
+                                            }
+                                        }
+                                    }
+
+                                    $oldStmt->close();
+                                }
+                            } else {
+                                $message = "Failed to save profile picture.";
+                                $messageType = "error";
+                                $uploadOk = false;
+                            }
                         }
                     }
                 }
@@ -120,14 +155,27 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                         } else {
                             $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
 
-                            $sql = "UPDATE users SET name = ?, email = ?, password = ?, bio = ?, school = ?, specialization = ?, skills = ?, profile_picture = COALESCE(?, profile_picture) WHERE id = ?";
+                            $sql = "UPDATE users
+                                    SET name = ?, email = ?, password = ?, bio = ?, school = ?, specialization = ?, skills = ?, profile_picture = COALESCE(?, profile_picture)
+                                    WHERE id = ?";
                             $stmt = $conn->prepare($sql);
 
                             if (!$stmt) {
                                 $message = "Something went wrong.";
                                 $messageType = "error";
                             } else {
-                                $stmt->bind_param("ssssssssi", $name, $email, $hashedPassword, $bio, $school, $specialization, $skills, $profilePicturePath, $userId);
+                                $stmt->bind_param(
+                                    "ssssssssi",
+                                    $name,
+                                    $email,
+                                    $hashedPassword,
+                                    $bio,
+                                    $school,
+                                    $specialization,
+                                    $skills,
+                                    $profilePicturePath,
+                                    $userId
+                                );
 
                                 if ($stmt->execute()) {
                                     $_SESSION["user_name"] = $name;
@@ -143,14 +191,26 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                             }
                         }
                     } else {
-                        $sql = "UPDATE users SET name = ?, email = ?, bio = ?, school = ?, specialization = ?, skills = ?, profile_picture = COALESCE(?, profile_picture) WHERE id = ?";
+                        $sql = "UPDATE users
+                                SET name = ?, email = ?, bio = ?, school = ?, specialization = ?, skills = ?, profile_picture = COALESCE(?, profile_picture)
+                                WHERE id = ?";
                         $stmt = $conn->prepare($sql);
 
                         if (!$stmt) {
                             $message = "Something went wrong.";
                             $messageType = "error";
                         } else {
-                            $stmt->bind_param("sssssssi", $name, $email, $bio, $school, $specialization, $skills, $profilePicturePath, $userId);
+                            $stmt->bind_param(
+                                "sssssssi",
+                                $name,
+                                $email,
+                                $bio,
+                                $school,
+                                $specialization,
+                                $skills,
+                                $profilePicturePath,
+                                $userId
+                            );
 
                             if ($stmt->execute()) {
                                 $_SESSION["user_name"] = $name;
@@ -175,6 +235,7 @@ $sql = "SELECT name, email, bio, school, specialization, skills, profile_picture
 $stmt = $conn->prepare($sql);
 
 if (!$stmt) {
+    $conn->close();
     die("Something went wrong.");
 }
 
@@ -182,7 +243,7 @@ $stmt->bind_param("i", $userId);
 $stmt->execute();
 $result = $stmt->get_result();
 
-if ($result->num_rows !== 1) {
+if (!$result || $result->num_rows !== 1) {
     $stmt->close();
     $conn->close();
     session_unset();
@@ -257,10 +318,10 @@ $conn->close();
           <input
             type="file"
             name="profile_picture"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/webp"
             class="w-full text-sm text-slate-300 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500"
           >
-          <p class="mt-2 text-xs text-slate-400">JPG, PNG, or WEBP. Max size 2MB.</p>
+          <p class="mt-2 text-xs text-slate-400">JPG, PNG, or WEBP. Max size 2MB. Minimum 100x100 pixels.</p>
 
           <?php if (!empty($user["profile_picture"])): ?>
             <div class="mt-4">

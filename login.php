@@ -1,7 +1,11 @@
 <?php
-session_start();
+require_once "session.php";
 require_once "csrf.php";
-include "db.php";
+
+$configPath = __DIR__ . "/config.php";
+$exampleConfigPath = __DIR__ . "/config.example.php";
+$appConfig = file_exists($configPath) ? require $configPath : require $exampleConfigPath;
+$rememberCookieName = $appConfig["remember_cookie_name"] ?? "techtrail_remember";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $csrfToken = $_POST["csrf_token"] ?? "";
@@ -50,7 +54,6 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     $stmt->close();
-    $conn->close();
 
     if ($loginSuccessful && $user !== null) {
         session_regenerate_id(true);
@@ -60,10 +63,44 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION["user_email"] = $user["email"];
         $_SESSION["remember_me"] = !empty($_POST["remember"]);
 
+        if (!empty($_POST["remember"])) {
+            $selector = bin2hex(random_bytes(8));
+            $validator = bin2hex(random_bytes(32));
+            $tokenHash = hash("sha256", $validator);
+            $expiresAt = date("Y-m-d H:i:s", time() + 60 * 60 * 24 * 30);
+
+            $deleteOld = $conn->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+            if ($deleteOld) {
+                $deleteOld->bind_param("i", $user["id"]);
+                $deleteOld->execute();
+                $deleteOld->close();
+            }
+
+            $insert = $conn->prepare("INSERT INTO remember_tokens (user_id, selector, token_hash, expires_at) VALUES (?, ?, ?, ?)");
+            if ($insert) {
+                $insert->bind_param("isss", $user["id"], $selector, $tokenHash, $expiresAt);
+                $insert->execute();
+                $insert->close();
+
+                setcookie(
+                    $rememberCookieName,
+                    $selector . ":" . $validator,
+                    [
+                        "expires" => time() + 60 * 60 * 24 * 30,
+                        "path" => "/",
+                        "httponly" => true,
+                        "samesite" => "Lax",
+                    ]
+                );
+            }
+        }
+
+        $conn->close();
         header("Location: dashboard.php");
         exit();
     }
 
+    $conn->close();
     header("Location: index.php?panel=signin&type=error&message=" . urlencode("Invalid email or password."));
     exit();
 }

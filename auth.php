@@ -6,4 +6,16 @@ function require_auth(): void
         exit();
     }
 }
-?>
+
+function is_admin(): bool
+{
+    return isset($_SESSION["user_role"]) && $_SESSION["user_role"] === "admin";
+}
+
+function require_admin(): void
+{
+    if (!is_admin()) {
+        header("Location: dashboard.php?type=error&message=" . urlencode("Admin access only."));
+        exit();
+    }
+}

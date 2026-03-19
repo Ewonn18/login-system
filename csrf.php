@@ -17,4 +17,3 @@ function is_valid_csrf_token(?string $token): bool
     $sessionToken = $_SESSION["csrf_token"] ?? "";
     return !empty($token) && !empty($sessionToken) && hash_equals($sessionToken, $token);
 }
-?>

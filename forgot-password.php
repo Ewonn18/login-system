@@ -1,7 +1,6 @@
 <?php
-session_start();
+require_once "session.php";
 require_once "csrf.php";
-include "db.php";
 
 $csrfToken = get_csrf_token();
 
@@ -37,25 +36,58 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    if ($result->num_rows === 1) {
-        $stmt->close();
-        $conn->close();
-        header("Location: reset-password.php?email=" . urlencode($email));
-        exit();
-    } else {
-        $stmt->close();
-        $conn->close();
-        header("Location: forgot-password.php?type=error&message=" . urlencode("No account found with that email."));
-        exit();
+    $message = "If the account exists, a reset link has been generated.";
+    $resetLink = "";
+
+    if ($result && $result->num_rows === 1) {
+        $user = $result->fetch_assoc();
+        $userId = (int)$user["id"];
+
+        $deleteOld = $conn->prepare("DELETE FROM password_resets WHERE user_id = ? OR expires_at < NOW() OR used_at IS NOT NULL");
+        if ($deleteOld) {
+            $deleteOld->bind_param("i", $userId);
+            $deleteOld->execute();
+            $deleteOld->close();
+        }
+
+        $selector = bin2hex(random_bytes(8));
+        $validator = bin2hex(random_bytes(32));
+        $tokenHash = hash("sha256", $validator);
+        $expiresAt = date("Y-m-d H:i:s", time() + 60 * 60);
+
+        $insert = $conn->prepare("INSERT INTO password_resets (user_id, selector, token_hash, expires_at) VALUES (?, ?, ?, ?)");
+        if ($insert) {
+            $insert->bind_param("isss", $userId, $selector, $tokenHash, $expiresAt);
+            $insert->execute();
+            $insert->close();
+
+            $configPath = __DIR__ . "/config.php";
+            $exampleConfigPath = __DIR__ . "/config.example.php";
+            $appConfig = file_exists($configPath) ? require $configPath : require $exampleConfigPath;
+            $baseUrl = rtrim($appConfig["base_url"] ?? "http://localhost/login-system", "/");
+
+            $resetLink = $baseUrl . "/reset-password.php?selector=" . urlencode($selector) . "&validator=" . urlencode($validator);
+        }
     }
+
+    $stmt->close();
+    $conn->close();
+
+    header("Location: forgot-password.php?type=success&message=" . urlencode($message) . "&reset_link=" . urlencode($resetLink));
+    exit();
 }
 
 $message = "";
 $messageType = "";
+$resetLinkFromQuery = "";
 
 if (isset($_GET["message"]) && isset($_GET["type"])) {
     $message = htmlspecialchars($_GET["message"]);
     $messageType = $_GET["type"] === "success" ? "success" : "error";
+}
+
+if (isset($_GET["reset_link"])) {
+    $resetLinkFromQuery = $_GET["reset_link"];
 }
 ?>
 <!doctype html>
@@ -81,6 +113,15 @@ if (isset($_GET["message"]) && isset($_GET["type"])) {
         </div>
       <?php endif; ?>
 
+      <?php if (!empty($resetLinkFromQuery)): ?>
+        <div class="bg-sky-500/10 border border-sky-500/50 text-sky-200 rounded-2xl px-4 py-3 text-sm mb-5 break-all">
+          <p class="font-semibold mb-1">Local demo reset link:</p>
+          <a href="<?php echo htmlspecialchars($resetLinkFromQuery); ?>" class="underline">
+            <?php echo htmlspecialchars($resetLinkFromQuery); ?>
+          </a>
+        </div>
+      <?php endif; ?>
+
       <form method="POST" action="forgot-password.php" class="space-y-4">
         <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
 
@@ -99,7 +140,7 @@ if (isset($_GET["message"]) && isset($_GET["type"])) {
           type="submit"
           class="w-full bg-sky-600/90 hover:bg-sky-500 text-white font-semibold py-3 rounded-xl transition shadow-md shadow-sky-500/30"
         >
-          Continue
+          Generate Reset Link
         </button>
       </form>
 
