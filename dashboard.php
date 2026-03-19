@@ -1,11 +1,8 @@
 <?php
 session_start();
+require_once "auth.php";
+require_auth();
 include "db.php";
-
-if (!isset($_SESSION["user_id"])) {
-    header("Location: index.php?panel=signin&type=error&message=" . urlencode("Please sign in first."));
-    exit();
-}
 
 $userId = $_SESSION["user_id"];
 

@@ -1,17 +1,11 @@
 <?php
 session_start();
+require_once "auth.php";
+require_once "csrf.php";
+require_auth();
 include "db.php";
 
-if (!isset($_SESSION["user_id"])) {
-    header("Location: index.php?panel=signin&type=error&message=" . urlencode("Please sign in first."));
-    exit();
-}
-
-if (empty($_SESSION["csrf_token"])) {
-    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
-}
-
-$csrfToken = $_SESSION["csrf_token"];
+$csrfToken = get_csrf_token();
 $userId = $_SESSION["user_id"];
 $message = "";
 $messageType = "";
@@ -19,7 +13,7 @@ $messageType = "";
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $postedToken = $_POST["csrf_token"] ?? "";
 
-    if (empty($postedToken) || !hash_equals($_SESSION["csrf_token"], $postedToken)) {
+    if (!is_valid_csrf_token($postedToken)) {
         $message = "Invalid request. Please refresh the page and try again.";
         $messageType = "error";
     } else {

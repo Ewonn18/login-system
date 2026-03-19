@@ -1,17 +1,14 @@
 <?php
 session_start();
+require_once "csrf.php";
 include "db.php";
 
-if (empty($_SESSION["csrf_token"])) {
-    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
-}
-
-$csrfToken = $_SESSION["csrf_token"];
+$csrfToken = get_csrf_token();
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $postedToken = $_POST["csrf_token"] ?? "";
 
-    if (empty($postedToken) || !hash_equals($_SESSION["csrf_token"], $postedToken)) {
+    if (!is_valid_csrf_token($postedToken)) {
         header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid request. Please refresh the page and try again."));
         exit();
     }

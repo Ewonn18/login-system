@@ -1,12 +1,12 @@
 <?php
 session_start();
+require_once "csrf.php";
 include "db.php";
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $csrfToken = $_POST["csrf_token"] ?? "";
-    $sessionToken = $_SESSION["csrf_token"] ?? "";
 
-    if (empty($csrfToken) || empty($sessionToken) || !hash_equals($sessionToken, $csrfToken)) {
+    if (!is_valid_csrf_token($csrfToken)) {
         header("Location: index.php?panel=signup&type=error&message=" . urlencode("Invalid request. Please try again."));
         exit();
     }

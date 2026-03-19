@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once "csrf.php";
 
 $message = "";
 $messageType = "";
@@ -14,11 +15,7 @@ if (isset($_GET["panel"]) && $_GET["panel"] === "signup") {
     $panel = "signup";
 }
 
-if (empty($_SESSION["csrf_token"])) {
-    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
-}
-
-$csrfToken = $_SESSION["csrf_token"];
+$csrfToken = get_csrf_token();
 ?>
 <!doctype html>
 <html lang="en">
@@ -53,7 +50,6 @@ $csrfToken = $_SESSION["csrf_token"];
       id="container"
       class="relative w-full max-w-5xl min-h-[680px] bg-slate-900/80 backdrop-blur-md border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.9)] overflow-hidden"
     >
-      <!-- Sign Up -->
       <div
         id="signUpPanel"
         class="absolute top-0 left-0 w-full md:w-1/2 h-full flex items-center justify-center px-6 md:px-8 py-10 opacity-0 z-10 transition-all duration-700 ease-in-out pointer-events-none"
@@ -150,7 +146,6 @@ $csrfToken = $_SESSION["csrf_token"];
         </form>
       </div>
 
-      <!-- Sign In -->
       <div
         id="signInPanel"
         class="absolute top-0 left-0 w-full md:w-1/2 h-full flex items-center justify-center px-6 md:px-8 py-10 z-20 transition-all duration-700 ease-in-out"
@@ -191,9 +186,9 @@ $csrfToken = $_SESSION["csrf_token"];
               type="password"
               name="password"
               id="signinPassword"
-            placeholder="Password"
+              placeholder="Password"
               required
-            class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
             />
             <button
               type="button"
@@ -222,7 +217,6 @@ $csrfToken = $_SESSION["csrf_token"];
         </form>
       </div>
 
-      <!-- Desktop Toggle -->
       <div
         id="toggleWrapper"
         class="hidden md:block absolute top-0 left-1/2 w-1/2 h-full overflow-hidden rounded-l-[120px] z-30 transition-all duration-700 ease-in-out"
@@ -231,7 +225,6 @@ $csrfToken = $_SESSION["csrf_token"];
           id="togglePanel"
           class="relative -left-full w-[200%] h-full bg-gradient-to-r from-sky-600 via-indigo-600 to-emerald-500 text-slate-50 transition-all duration-700 ease-in-out"
         >
-          <!-- Left -->
           <div
             id="toggleLeft"
             class="absolute top-0 left-0 w-1/2 h-full flex flex-col items-center justify-center text-center px-8 -translate-x-[200%] transition-all duration-700 ease-in-out"
@@ -249,7 +242,6 @@ $csrfToken = $_SESSION["csrf_token"];
             </button>
           </div>
 
-          <!-- Right -->
           <div
             id="toggleRight"
             class="absolute top-0 right-0 w-1/2 h-full flex flex-col items-center justify-center text-center px-8 transition-all duration-700 ease-in-out"
@@ -269,7 +261,6 @@ $csrfToken = $_SESSION["csrf_token"];
         </div>
       </div>
 
-      <!-- Mobile Buttons -->
       <div class="md:hidden absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-3 z-40">
         <button
           type="button"
