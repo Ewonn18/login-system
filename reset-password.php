@@ -1,17 +1,26 @@
 <?php
+session_start();
 include "db.php";
 
-$email = isset($_GET["email"]) ? trim($_GET["email"]) : "";
-
-if (empty($email)) {
-    header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid password reset request."));
-    exit();
+if (empty($_SESSION["csrf_token"])) {
+    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
 }
 
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $email = trim($_POST["email"]);
-    $newPassword = trim($_POST["new_password"]);
-    $confirmPassword = trim($_POST["confirm_password"]);
+$csrfToken = $_SESSION["csrf_token"];
+$email = isset($_GET["email"]) ? trim($_GET["email"]) : "";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $postedToken = $_POST["csrf_token"] ?? "";
+
+    if (empty($postedToken) || !hash_equals($_SESSION["csrf_token"], $postedToken)) {
+        $emailRedirect = trim($_POST["email"] ?? "");
+        header("Location: reset-password.php?email=" . urlencode($emailRedirect) . "&type=error&message=" . urlencode("Invalid request. Please refresh the page and try again."));
+        exit();
+    }
+
+    $email = trim($_POST["email"] ?? "");
+    $newPassword = trim($_POST["new_password"] ?? "");
+    $confirmPassword = trim($_POST["confirm_password"] ?? "");
 
     if (empty($email) || empty($newPassword) || empty($confirmPassword)) {
         header("Location: reset-password.php?email=" . urlencode($email) . "&type=error&message=" . urlencode("All fields are required."));
@@ -47,12 +56,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $stmt->bind_param("ss", $hashedPassword, $email);
 
     if ($stmt->execute()) {
+        $stmt->close();
+        $conn->close();
         header("Location: index.php?panel=signin&type=success&message=" . urlencode("Password updated successfully. You can now sign in."));
         exit();
     } else {
+        $stmt->close();
+        $conn->close();
         header("Location: reset-password.php?email=" . urlencode($email) . "&type=error&message=" . urlencode("Failed to reset password."));
         exit();
     }
+}
+
+if (empty($email)) {
+    header("Location: forgot-password.php?type=error&message=" . urlencode("Invalid password reset request."));
+    exit();
+}
+
+$message = "";
+$messageType = "";
+
+if (isset($_GET["message"]) && isset($_GET["type"])) {
+    $message = htmlspecialchars($_GET["message"]);
+    $messageType = $_GET["type"] === "success" ? "success" : "error";
 }
 ?>
 <!doctype html>
@@ -60,77 +86,73 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Reset Password</title>
+  <title>TechTrail Community - Reset Password</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link
     rel="stylesheet"
     href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
-  />
+  >
 </head>
-<body class="min-h-screen bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 flex items-center justify-center px-4">
-  <?php
-    $message = "";
-    $messageType = "";
+<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">
+  <div class="w-full max-w-md bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-5">
+      <p class="text-xs uppercase tracking-[0.25em] text-slate-400">TechTrail Community</p>
+      <h1 class="mt-2 text-2xl font-semibold text-slate-50">Reset Password</h1>
+      <p class="mt-1 text-sm text-slate-400">Set a strong new password for your account.</p>
+    </header>
 
-    if (isset($_GET["message"]) && isset($_GET["type"])) {
-        $message = htmlspecialchars($_GET["message"]);
-        $messageType = $_GET["type"] === "success" ? "success" : "error";
-    }
-  ?>
-
-  <div class="w-full max-w-md">
-    <?php if (!empty($message)): ?>
-      <div class="<?php echo $messageType === 'success' ? 'bg-green-500/90 border-green-300' : 'bg-red-500/90 border-red-300'; ?> text-white border rounded-xl px-4 py-3 shadow-lg text-center mb-4">
-        <?php echo $message; ?>
-      </div>
-    <?php endif; ?>
-
-    <div class="bg-white/10 backdrop-blur-md border border-white/20 rounded-3xl shadow-2xl p-8 text-white">
-      <h1 class="text-3xl font-bold text-center mb-3">Reset Password</h1>
-      <p class="text-gray-300 text-center mb-6">Set your new password.</p>
+    <main class="p-6">
+      <?php if (!empty($message)): ?>
+        <div class="<?php echo $messageType === 'success' ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-200' : 'bg-rose-500/10 border-rose-500/60 text-rose-200'; ?> border rounded-2xl px-4 py-3 text-sm mb-5">
+          <?php echo $message; ?>
+        </div>
+      <?php endif; ?>
 
       <form method="POST" action="reset-password.php" class="space-y-4">
+        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
         <input type="hidden" name="email" value="<?php echo htmlspecialchars($email); ?>">
 
         <div class="relative">
+          <label class="block text-sm text-slate-300 mb-2">New Password</label>
           <input
             type="password"
             name="new_password"
             id="newPassword"
             placeholder="New Password"
             required
-            class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-4 pr-14 outline-none border border-white/10"
+            class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
             oninput="checkPasswordStrength(this.value, 'resetStrengthText', 'resetStrengthBar')"
-          />
+          >
           <button
             type="button"
             onclick="togglePassword('newPassword', 'newEye')"
-            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-white"
+            class="absolute right-4 top-[42px] text-slate-400 hover:text-white"
           >
             <i id="newEye" class="fa-solid fa-eye"></i>
           </button>
         </div>
 
         <div>
-          <div class="w-full h-2 bg-white/10 rounded-full overflow-hidden">
+          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <div id="resetStrengthBar" class="h-full w-0 transition-all duration-300"></div>
           </div>
-          <p id="resetStrengthText" class="text-left text-sm text-gray-300 mt-2">Password strength: —</p>
+          <p id="resetStrengthText" class="text-left text-sm text-slate-400 mt-2">Password strength: —</p>
         </div>
 
         <div class="relative">
+          <label class="block text-sm text-slate-300 mb-2">Confirm Password</label>
           <input
             type="password"
             name="confirm_password"
             id="confirmPassword"
             placeholder="Confirm Password"
             required
-            class="w-full bg-white/10 text-white placeholder-gray-300 rounded-xl px-5 py-4 pr-14 outline-none border border-white/10"
-          />
+            class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+          >
           <button
             type="button"
             onclick="togglePassword('confirmPassword', 'confirmEye')"
-            class="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-white"
+            class="absolute right-4 top-[42px] text-slate-400 hover:text-white"
           >
             <i id="confirmEye" class="fa-solid fa-eye"></i>
           </button>
@@ -138,16 +160,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
         <button
           type="submit"
-          class="w-full bg-fuchsia-600 hover:bg-fuchsia-700 text-white font-bold py-4 rounded-xl transition"
+          class="w-full bg-sky-600/90 hover:bg-sky-500 text-white font-semibold py-3 rounded-xl transition shadow-md shadow-sky-500/30"
         >
           Reset Password
         </button>
       </form>
 
       <div class="text-center mt-5">
-        <a href="index.php" class="text-white hover:underline">Back to Login</a>
+        <a href="index.php" class="text-sky-400 hover:underline text-sm">Back to Login</a>
       </div>
-    </div>
+    </main>
   </div>
 
   <script>

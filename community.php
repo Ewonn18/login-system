@@ -7,6 +7,11 @@ if (!isset($_SESSION["user_id"])) {
     exit();
 }
 
+if (empty($_SESSION["csrf_token"])) {
+    $_SESSION["csrf_token"] = bin2hex(random_bytes(32));
+}
+
+$csrfToken = $_SESSION["csrf_token"];
 $userId = $_SESSION["user_id"];
 $userName = $_SESSION["user_name"] ?? "Unknown User";
 
@@ -16,122 +21,129 @@ $messageType = "";
 $editPostId = isset($_GET["edit_post_id"]) ? (int)$_GET["edit_post_id"] : 0;
 
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
-    $formType = $_POST["form_type"] ?? "";
+    $postedToken = $_POST["csrf_token"] ?? "";
 
-    if ($formType === "post") {
-        $title = trim($_POST["title"] ?? "");
-        $category = trim($_POST["category"] ?? "");
-        $content = trim($_POST["content"] ?? "");
+    if (empty($postedToken) || !hash_equals($_SESSION["csrf_token"], $postedToken)) {
+        $message = "Invalid request. Please refresh the page and try again.";
+        $messageType = "error";
+    } else {
+        $formType = $_POST["form_type"] ?? "";
 
-        if ($title === "" || $category === "" || $content === "") {
-            $message = "All post fields are required.";
-            $messageType = "error";
-        } else {
-            $sql = "INSERT INTO posts (user_id, title, category, content, author_name) VALUES (?, ?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
+        if ($formType === "post") {
+            $title = trim($_POST["title"] ?? "");
+            $category = trim($_POST["category"] ?? "");
+            $content = trim($_POST["content"] ?? "");
 
-            if (!$stmt) {
-                $message = "Something went wrong. Please try again.";
+            if ($title === "" || $category === "" || $content === "") {
+                $message = "All post fields are required.";
                 $messageType = "error";
             } else {
-                $stmt->bind_param("issss", $userId, $title, $category, $content, $userName);
+                $sql = "INSERT INTO posts (user_id, title, category, content, author_name) VALUES (?, ?, ?, ?, ?)";
+                $stmt = $conn->prepare($sql);
 
-                if ($stmt->execute()) {
-                    $message = "Your post has been shared.";
-                    $messageType = "success";
-                } else {
-                    $message = "Could not save your post. Please try again.";
+                if (!$stmt) {
+                    $message = "Something went wrong. Please try again.";
                     $messageType = "error";
-                }
+                } else {
+                    $stmt->bind_param("issss", $userId, $title, $category, $content, $userName);
 
-                $stmt->close();
+                    if ($stmt->execute()) {
+                        $message = "Your post has been shared.";
+                        $messageType = "success";
+                    } else {
+                        $message = "Could not save your post. Please try again.";
+                        $messageType = "error";
+                    }
+
+                    $stmt->close();
+                }
             }
-        }
-    } elseif ($formType === "comment") {
-        $postId = (int)($_POST["post_id"] ?? 0);
-        $commentContent = trim($_POST["comment_content"] ?? "");
+        } elseif ($formType === "comment") {
+            $postId = (int)($_POST["post_id"] ?? 0);
+            $commentContent = trim($_POST["comment_content"] ?? "");
 
-        if ($postId <= 0 || $commentContent === "") {
-            $message = "Please enter a comment before submitting.";
-            $messageType = "error";
-        } else {
-            $sql = "INSERT INTO comments (post_id, user_id, author_name, content) VALUES (?, ?, ?, ?)";
-            $stmt = $conn->prepare($sql);
-
-            if (!$stmt) {
-                $message = "Something went wrong while saving your comment.";
+            if ($postId <= 0 || $commentContent === "") {
+                $message = "Please enter a comment before submitting.";
                 $messageType = "error";
             } else {
-                $stmt->bind_param("iiss", $postId, $userId, $userName, $commentContent);
+                $sql = "INSERT INTO comments (post_id, user_id, author_name, content) VALUES (?, ?, ?, ?)";
+                $stmt = $conn->prepare($sql);
 
-                if ($stmt->execute()) {
-                    $message = "Your comment has been added.";
-                    $messageType = "success";
-                } else {
-                    $message = "Could not save your comment. Please try again.";
+                if (!$stmt) {
+                    $message = "Something went wrong while saving your comment.";
                     $messageType = "error";
-                }
+                } else {
+                    $stmt->bind_param("iiss", $postId, $userId, $userName, $commentContent);
 
-                $stmt->close();
+                    if ($stmt->execute()) {
+                        $message = "Your comment has been added.";
+                        $messageType = "success";
+                    } else {
+                        $message = "Could not save your comment. Please try again.";
+                        $messageType = "error";
+                    }
+
+                    $stmt->close();
+                }
             }
-        }
-    } elseif ($formType === "update_post") {
-        $postId = (int)($_POST["post_id"] ?? 0);
-        $title = trim($_POST["title"] ?? "");
-        $category = trim($_POST["category"] ?? "");
-        $content = trim($_POST["content"] ?? "");
+        } elseif ($formType === "update_post") {
+            $postId = (int)($_POST["post_id"] ?? 0);
+            $title = trim($_POST["title"] ?? "");
+            $category = trim($_POST["category"] ?? "");
+            $content = trim($_POST["content"] ?? "");
 
-        if ($postId <= 0 || $title === "" || $category === "" || $content === "") {
-            $message = "All post fields are required to update.";
-            $messageType = "error";
-        } else {
-            $sql = "UPDATE posts SET title = ?, category = ?, content = ? WHERE id = ? AND user_id = ?";
-            $stmt = $conn->prepare($sql);
-
-            if (!$stmt) {
-                $message = "Something went wrong while updating your post.";
+            if ($postId <= 0 || $title === "" || $category === "" || $content === "") {
+                $message = "All post fields are required to update.";
                 $messageType = "error";
             } else {
-                $stmt->bind_param("sssii", $title, $category, $content, $postId, $userId);
-                $stmt->execute();
+                $sql = "UPDATE posts SET title = ?, category = ?, content = ? WHERE id = ? AND user_id = ?";
+                $stmt = $conn->prepare($sql);
 
-                if ($stmt->affected_rows > 0) {
-                    $message = "Your post has been updated.";
-                    $messageType = "success";
-                } else {
-                    $message = "Could not update this post. Make sure it still exists and belongs to you.";
+                if (!$stmt) {
+                    $message = "Something went wrong while updating your post.";
                     $messageType = "error";
-                }
+                } else {
+                    $stmt->bind_param("sssii", $title, $category, $content, $postId, $userId);
+                    $stmt->execute();
 
-                $stmt->close();
+                    if ($stmt->affected_rows > 0) {
+                        $message = "Your post has been updated.";
+                        $messageType = "success";
+                    } else {
+                        $message = "Could not update this post. Make sure it still exists and belongs to you.";
+                        $messageType = "error";
+                    }
+
+                    $stmt->close();
+                }
             }
-        }
-    } elseif ($formType === "delete_post") {
-        $postId = (int)($_POST["post_id"] ?? 0);
+        } elseif ($formType === "delete_post") {
+            $postId = (int)($_POST["post_id"] ?? 0);
 
-        if ($postId <= 0) {
-            $message = "Could not delete this post.";
-            $messageType = "error";
-        } else {
-            $sql = "DELETE FROM posts WHERE id = ? AND user_id = ?";
-            $stmt = $conn->prepare($sql);
-
-            if (!$stmt) {
-                $message = "Something went wrong while deleting your post.";
+            if ($postId <= 0) {
+                $message = "Could not delete this post.";
                 $messageType = "error";
             } else {
-                $stmt->bind_param("ii", $postId, $userId);
-                $stmt->execute();
+                $sql = "DELETE FROM posts WHERE id = ? AND user_id = ?";
+                $stmt = $conn->prepare($sql);
 
-                if ($stmt->affected_rows > 0) {
-                    $message = "Your post has been deleted.";
-                    $messageType = "success";
-                } else {
-                    $message = "Could not delete this post. Make sure it still exists and belongs to you.";
+                if (!$stmt) {
+                    $message = "Something went wrong while deleting your post.";
                     $messageType = "error";
-                }
+                } else {
+                    $stmt->bind_param("ii", $postId, $userId);
+                    $stmt->execute();
 
-                $stmt->close();
+                    if ($stmt->affected_rows > 0) {
+                        $message = "Your post has been deleted.";
+                        $messageType = "success";
+                    } else {
+                        $message = "Could not delete this post. Make sure it still exists and belongs to you.";
+                        $messageType = "error";
+                    }
+
+                    $stmt->close();
+                }
             }
         }
     }
@@ -152,8 +164,8 @@ if ($postsResult && $postsResult->num_rows > 0) {
 if (!empty($posts)) {
     $postIds = array_keys($posts);
     $placeholders = implode(",", array_fill(0, count($postIds), "?"));
-
     $types = str_repeat("i", count($postIds));
+
     $sqlComments = "SELECT post_id, author_name, content, created_at FROM comments WHERE post_id IN ($placeholders) ORDER BY created_at ASC";
     $stmtComments = $conn->prepare($sqlComments);
 
@@ -182,21 +194,20 @@ $conn->close();
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Community Hub</title>
+  <title>TechTrail Community - Community Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">
   <div class="w-full max-w-5xl bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
 
-    <!-- Top bar -->
-    <header class="bg-gradient-to-r from-slate-900 via-slate-900 to-slate-900 border-b border-slate-800 px-6 md:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+    <header class="bg-slate-900 border-b border-slate-800 px-6 md:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
       <div>
-        <p class="text-xs uppercase tracking-[0.25em] text-slate-400">IT Community Hub</p>
+        <p class="text-xs uppercase tracking-[0.25em] text-slate-400">TechTrail Community</p>
         <h1 class="mt-2 text-2xl md:text-3xl font-semibold text-slate-50">
-          Share your journey, learn from others.
+          Community Hub
         </h1>
         <p class="mt-1 text-sm text-slate-400">
-          Post your experiences, tips, and questions with fellow developers.
+          Share your journey, ask questions, and learn with fellow student developers.
         </p>
       </div>
       <div class="flex gap-3">
@@ -222,15 +233,15 @@ $conn->close();
         </div>
       <?php endif; ?>
 
-      <!-- Top: Create post panel -->
       <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6">
         <h2 class="text-base md:text-lg font-semibold text-slate-100">Create a new post</h2>
         <p class="mt-1 text-xs md:text-sm text-slate-400">
-          Share an IT story, concept, or tip with the community.
+          Share an IT story, concept, tip, or question with the community.
         </p>
 
         <form method="POST" class="mt-4 space-y-4">
-          <input type="hidden" name="form_type" value="post" />
+          <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+          <input type="hidden" name="form_type" value="post">
 
           <div>
             <label class="block text-xs md:text-sm text-slate-300 mb-1" for="title">Title</label>
@@ -241,21 +252,19 @@ $conn->close();
               required
               class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
               placeholder="e.g. How I learned PHP and MySQL"
-            />
+            >
           </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label class="block text-xs md:text-sm text-slate-300 mb-1" for="category">Category</label>
-              <input
-                type="text"
-                id="category"
-                name="category"
-                required
-                class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-                placeholder="e.g. Web Development, Networking, Career Tips"
-              />
-            </div>
+          <div>
+            <label class="block text-xs md:text-sm text-slate-300 mb-1" for="category">Category</label>
+            <input
+              type="text"
+              id="category"
+              name="category"
+              required
+              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+              placeholder="e.g. Web Development, Networking, Career Tips"
+            >
           </div>
 
           <div>
@@ -279,15 +288,14 @@ $conn->close();
         </form>
       </section>
 
-      <!-- Bottom: Community feed -->
       <section class="space-y-4">
         <div class="flex items-center justify-between gap-2">
           <h2 class="text-base md:text-lg font-semibold text-slate-100">Community posts</h2>
-          <p class="text-xs text-slate-400">Latest posts from members of the IT community.</p>
+          <p class="text-xs text-slate-400">Latest posts from members of TechTrail Community.</p>
         </div>
 
         <?php if (empty($posts)): ?>
-          <p class="text-slate-400 text-xs md:text-sm">No posts yet. Be the first to share something!</p>
+          <p class="text-slate-400 text-xs md:text-sm">No posts yet. Be the first to share something.</p>
         <?php else: ?>
           <div class="space-y-4 max-h-[520px] overflow-y-auto pr-1">
             <?php foreach ($posts as $post): ?>
@@ -301,6 +309,7 @@ $conn->close();
                       By <?php echo htmlspecialchars($post["author_name"]); ?>
                     </p>
                   </div>
+
                   <div class="flex flex-col items-end gap-1">
                     <span class="inline-flex items-center rounded-full bg-sky-600/80 text-[11px] md:text-xs font-semibold px-3 py-1 text-white">
                       <?php echo htmlspecialchars($post["category"]); ?>
@@ -311,6 +320,7 @@ $conn->close();
                         echo date("M j, Y · g:i A", $date);
                       ?>
                     </span>
+
                     <?php if ((int)$post["user_id"] === (int)$userId): ?>
                       <div class="mt-1 flex gap-1">
                         <a
@@ -319,9 +329,11 @@ $conn->close();
                         >
                           Edit
                         </a>
+
                         <form method="POST" onsubmit="return confirm('Delete this post? This cannot be undone.');">
-                          <input type="hidden" name="form_type" value="delete_post" />
-                          <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>" />
+                          <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                          <input type="hidden" name="form_type" value="delete_post">
+                          <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
                           <button
                             type="submit"
                             class="inline-flex items-center rounded-lg bg-rose-600/90 hover:bg-rose-500 text-[10px] md:text-[11px] px-2 py-1 text-white transition"
@@ -336,8 +348,10 @@ $conn->close();
 
                 <?php if ($editPostId === (int)$post["id"] && (int)$post["user_id"] === (int)$userId): ?>
                   <form method="POST" class="space-y-3 bg-slate-900/80 border border-slate-800 rounded-2xl p-3 md:p-4">
-                    <input type="hidden" name="form_type" value="update_post" />
-                    <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>" />
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="form_type" value="update_post">
+                    <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
+
                     <div>
                       <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="edit_title_<?php echo (int)$post["id"]; ?>">Title</label>
                       <input
@@ -347,8 +361,9 @@ $conn->close();
                         value="<?php echo htmlspecialchars($post["title"]); ?>"
                         required
                         class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-[11px] md:text-xs"
-                      />
+                      >
                     </div>
+
                     <div>
                       <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="edit_category_<?php echo (int)$post["id"]; ?>">Category</label>
                       <input
@@ -358,8 +373,9 @@ $conn->close();
                         value="<?php echo htmlspecialchars($post["category"]); ?>"
                         required
                         class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-[11px] md:text-xs"
-                      />
+                      >
                     </div>
+
                     <div>
                       <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="edit_content_<?php echo (int)$post["id"]; ?>">Content</label>
                       <textarea
@@ -370,6 +386,7 @@ $conn->close();
                         class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-[11px] md:text-xs"
                       ><?php echo htmlspecialchars($post["content"]); ?></textarea>
                     </div>
+
                     <div class="flex flex-wrap gap-2">
                       <button
                         type="submit"
@@ -391,7 +408,6 @@ $conn->close();
                   </p>
                 <?php endif; ?>
 
-                <!-- Comments -->
                 <div class="border-t border-slate-800 pt-4 space-y-3">
                   <h4 class="text-xs md:text-sm font-semibold text-slate-200">Comments</h4>
 
@@ -422,10 +438,11 @@ $conn->close();
                     </div>
                   <?php endif; ?>
 
-                  <!-- Add comment form -->
                   <form method="POST" class="mt-2 space-y-2">
-                    <input type="hidden" name="form_type" value="comment" />
-                    <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>" />
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="form_type" value="comment">
+                    <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
+
                     <label class="block text-[11px] md:text-xs text-slate-300 mb-1" for="comment_<?php echo (int)$post["id"]; ?>">
                       Add your insight
                     </label>
@@ -453,4 +470,3 @@ $conn->close();
   </div>
 </body>
 </html>
-
