@@ -22,7 +22,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        header("Location: index.php?panel=signin&type=error&message=" . urlencode("Invalid email format."));
+        header("Location: index.php?panel=signin&type=error&message=" . urlencode("Please enter a valid email address."));
         exit();
     }
 
@@ -30,7 +30,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt = $conn->prepare($sql);
 
     if (!$stmt) {
-        header("Location: index.php?panel=signin&type=error&message=" . urlencode("Something went wrong."));
+        $conn->close();
+        header("Location: index.php?panel=signin&type=error&message=" . urlencode("Something went wrong. Please try again."));
         exit();
     }
 
@@ -38,38 +39,35 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt->execute();
     $result = $stmt->get_result();
 
-    if ($result->num_rows === 1) {
+    $loginSuccessful = false;
+    $user = null;
+
+    if ($result && $result->num_rows === 1) {
         $user = $result->fetch_assoc();
-
         if (password_verify($password, $user["password"])) {
-            session_regenerate_id(true);
-
-            $_SESSION["user_id"] = $user["id"];
-            $_SESSION["user_name"] = $user["name"];
-            $_SESSION["user_email"] = $user["email"];
-            $_SESSION["remember_me"] = !empty($_POST["remember"]);
-
-            $stmt->close();
-            $conn->close();
-
-            header("Location: dashboard.php");
-            exit();
-        } else {
-            $stmt->close();
-            $conn->close();
-
-            header("Location: index.php?panel=signin&type=error&message=" . urlencode("Invalid password."));
-            exit();
+            $loginSuccessful = true;
         }
-    } else {
-        $stmt->close();
-        $conn->close();
+    }
 
-        header("Location: index.php?panel=signin&type=error&message=" . urlencode("No account found with that email."));
+    $stmt->close();
+    $conn->close();
+
+    if ($loginSuccessful && $user !== null) {
+        session_regenerate_id(true);
+
+        $_SESSION["user_id"] = $user["id"];
+        $_SESSION["user_name"] = $user["name"];
+        $_SESSION["user_email"] = $user["email"];
+        $_SESSION["remember_me"] = !empty($_POST["remember"]);
+
+        header("Location: dashboard.php");
         exit();
     }
-} else {
-    header("Location: index.php");
+
+    header("Location: index.php?panel=signin&type=error&message=" . urlencode("Invalid email or password."));
     exit();
 }
+
+header("Location: index.php");
+exit();
 ?>

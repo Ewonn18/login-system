@@ -24,7 +24,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Invalid email format."));
+        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Please enter a valid email address."));
         exit();
     }
 
@@ -48,7 +48,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $checkStmt = $conn->prepare($checkSql);
 
     if (!$checkStmt) {
-        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Something went wrong."));
+        $conn->close();
+        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Something went wrong. Please try again."));
         exit();
     }
 
@@ -60,9 +61,11 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $checkStmt->close();
         $conn->close();
 
-        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Email already exists."));
+        header("Location: index.php?panel=signup&type=error&message=" . urlencode("An account with that email already exists."));
         exit();
     }
+
+    $checkStmt->close();
 
     $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
@@ -70,10 +73,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $stmt = $conn->prepare($sql);
 
     if (!$stmt) {
-        $checkStmt->close();
         $conn->close();
-
-        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Something went wrong."));
+        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Something went wrong. Please try again."));
         exit();
     }
 
@@ -81,21 +82,19 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if ($stmt->execute()) {
         $stmt->close();
-        $checkStmt->close();
         $conn->close();
 
         header("Location: index.php?panel=signin&type=success&message=" . urlencode("Registration successful. You can now sign in."));
         exit();
-    } else {
-        $stmt->close();
-        $checkStmt->close();
-        $conn->close();
-
-        header("Location: index.php?panel=signup&type=error&message=" . urlencode("Registration failed."));
-        exit();
     }
-} else {
-    header("Location: index.php");
+
+    $stmt->close();
+    $conn->close();
+
+    header("Location: index.php?panel=signup&type=error&message=" . urlencode("Registration failed. Please try again."));
     exit();
 }
+
+header("Location: index.php");
+exit();
 ?>
