@@ -275,190 +275,238 @@ function buildPageUrl(int $targetPage, string $search, string $category): string
   <title>TechTrail Community - Community Hub</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">
-  <div class="w-full max-w-5xl bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
-    <header class="bg-slate-900 border-b border-slate-800 px-6 md:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-      <div>
-        <p class="text-xs uppercase tracking-[0.25em] text-slate-400">TechTrail Community</p>
-        <h1 class="mt-2 text-2xl md:text-3xl font-semibold text-slate-50">Community Hub</h1>
-        <p class="mt-1 text-sm text-slate-400">Share your journey, ask questions, and learn with fellow student developers.</p>
-      </div>
-      <div class="flex gap-3">
-        <a href="dashboard.php" class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 text-xs md:text-sm font-medium text-slate-100 transition">Back to dashboard</a>
-        <a href="logout.php" class="px-4 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-xs md:text-sm font-medium text-white transition">Sign out</a>
-      </div>
-    </header>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.10),transparent_25%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.10),transparent_25%)] pointer-events-none"></div>
 
-    <main class="p-6 md:p-8 space-y-8">
-      <?php if (!empty($message)): ?>
-        <div class="<?php echo $messageType === 'success' ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-200' : 'bg-rose-500/10 border-rose-500/60 text-rose-200'; ?> border rounded-2xl px-4 py-3 text-xs md:text-sm">
-          <?php echo htmlspecialchars($message); ?>
+  <div class="relative max-w-6xl mx-auto px-4 py-8 md:py-10">
+    <div class="bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
+      <header class="bg-slate-900 border-b border-slate-800 px-6 md:px-8 py-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+        <div>
+          <p class="text-xs uppercase tracking-[0.25em] text-sky-300">TechTrail Community</p>
+          <h1 class="mt-2 text-2xl md:text-3xl font-semibold text-slate-50">Community Hub</h1>
+          <p class="mt-1 text-sm text-slate-400">Share your journey, ask questions, and learn with fellow student developers.</p>
         </div>
-      <?php endif; ?>
 
-      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6">
-        <h2 class="text-base md:text-lg font-semibold text-slate-100">Create a new post</h2>
-        <form method="POST" class="mt-4 space-y-4">
-          <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-          <input type="hidden" name="form_type" value="post">
+        <div class="flex flex-wrap gap-3">
+          <a href="dashboard.php" class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 text-sm font-medium text-slate-100 transition">Back to dashboard</a>
+          <a href="profile.php?id=<?php echo (int)$userId; ?>" class="px-4 py-2 rounded-xl border border-sky-500/50 bg-sky-500/10 hover:bg-sky-500/20 text-sm font-medium text-sky-200 transition">My public profile</a>
+          <a href="logout.php" class="px-4 py-2 rounded-xl bg-rose-600/90 hover:bg-rose-500 text-sm font-medium text-white transition">Sign out</a>
+        </div>
+      </header>
 
-          <div>
-            <label class="block text-xs md:text-sm text-slate-300 mb-1">Title</label>
-            <input type="text" name="title" required class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm">
+      <main class="p-6 md:p-8 space-y-8">
+        <?php if (!empty($message)): ?>
+          <div class="<?php echo $messageType === 'success' ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-200' : 'bg-rose-500/10 border-rose-500/60 text-rose-200'; ?> border rounded-2xl px-4 py-3 text-xs md:text-sm">
+            <?php echo htmlspecialchars($message); ?>
           </div>
+        <?php endif; ?>
 
-          <div>
-            <label class="block text-xs md:text-sm text-slate-300 mb-1">Category</label>
-            <select name="category" required class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm">
-              <option value="">Select a category</option>
-              <?php foreach ($allowedCategories as $cat): ?>
-                <option value="<?php echo htmlspecialchars($cat); ?>"><?php echo htmlspecialchars($cat); ?></option>
-              <?php endforeach; ?>
-            </select>
-          </div>
+        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="lg:col-span-2 bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6">
+            <h2 class="text-base md:text-lg font-semibold text-slate-100">Create a new post</h2>
+            <p class="mt-1 text-sm text-slate-400">Share a lesson, question, experience, or idea with the community.</p>
 
-          <div>
-            <label class="block text-xs md:text-sm text-slate-300 mb-1">Content</label>
-            <textarea name="content" rows="4" required class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"></textarea>
-          </div>
+            <form method="POST" class="mt-5 space-y-4">
+              <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+              <input type="hidden" name="form_type" value="post">
 
-          <button type="submit" class="inline-flex items-center rounded-xl bg-sky-600/90 hover:bg-sky-500 text-sm font-medium text-white px-5 py-2.5 transition">
-            Share post
-          </button>
-        </form>
-      </section>
-
-      <section class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6">
-        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div class="md:col-span-2">
-            <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search title, content, or author..." class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm">
-          </div>
-          <div>
-            <select name="category" class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm">
-              <option value="">All categories</option>
-              <?php foreach ($allowedCategories as $cat): ?>
-                <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $categoryFilter === $cat ? 'selected' : ''; ?>>
-                  <?php echo htmlspecialchars($cat); ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-          </div>
-          <div class="flex gap-2">
-            <button type="submit" class="flex-1 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-sm font-medium text-white px-4 py-3 transition">Apply</button>
-            <a href="community.php" class="flex-1 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 text-sm font-medium text-slate-100 px-4 py-3 text-center transition">Reset</a>
-          </div>
-        </form>
-      </section>
-
-      <section class="space-y-4">
-        <?php if (empty($posts)): ?>
-          <p class="text-slate-400 text-sm">No posts found.</p>
-        <?php else: ?>
-          <?php foreach ($posts as $post): ?>
-            <article class="bg-slate-900/80 border border-slate-800 rounded-2xl p-4 md:p-5 space-y-4">
-              <div class="flex flex-wrap items-start justify-between gap-2">
-                <div>
-                  <h3 class="text-sm md:text-base font-semibold text-slate-50"><?php echo htmlspecialchars($post["title"]); ?></h3>
-                  <p class="mt-1 text-xs text-slate-400">
-                    By
-                    <a href="profile.php?id=<?php echo (int)$post["user_id"]; ?>" class="text-sky-400 hover:underline">
-                      <?php echo htmlspecialchars($post["author_name"]); ?>
-                    </a>
-                  </p>
-                </div>
-
-                <div class="flex flex-col items-end gap-1">
-                  <span class="inline-flex items-center rounded-full bg-sky-600/80 text-xs font-semibold px-3 py-1 text-white">
-                    <?php echo htmlspecialchars($post["category"]); ?>
-                  </span>
-                  <span class="text-xs text-slate-400"><?php echo date("M j, Y · g:i A", strtotime($post["created_at"])); ?></span>
-                </div>
+              <div>
+                <label class="block text-xs md:text-sm text-slate-300 mb-1">Title</label>
+                <input type="text" name="title" required class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm">
               </div>
 
-              <p class="text-slate-100 text-sm whitespace-pre-line"><?php echo nl2br(htmlspecialchars($post["content"])); ?></p>
+              <div>
+                <label class="block text-xs md:text-sm text-slate-300 mb-1">Category</label>
+                <select name="category" required class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm">
+                  <option value="">Select a category</option>
+                  <?php foreach ($allowedCategories as $cat): ?>
+                    <option value="<?php echo htmlspecialchars($cat); ?>"><?php echo htmlspecialchars($cat); ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
 
-              <div class="flex flex-wrap items-center gap-2">
-                <form method="POST">
-                  <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                  <input type="hidden" name="form_type" value="toggle_like">
-                  <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
-                  <button type="submit" class="rounded-xl px-3 py-1.5 text-xs font-medium <?php echo (int)$post["user_liked"] === 1 ? 'bg-rose-600/90 text-white' : 'border border-slate-600/80 bg-slate-900/60 text-slate-100'; ?>">
-                    <?php echo (int)$post["user_liked"] === 1 ? "Unlike" : "Like"; ?>
-                  </button>
-                </form>
-                <span class="text-xs text-slate-400"><?php echo (int)$post["like_count"]; ?> like(s)</span>
+              <div>
+                <label class="block text-xs md:text-sm text-slate-300 mb-1">Content</label>
+                <textarea name="content" rows="5" required class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"></textarea>
+              </div>
 
-                <?php if ((int)$post["user_id"] === (int)$userId || $isAdmin): ?>
-                  <form method="POST" onsubmit="return confirm('Delete this post?');">
+              <button type="submit" class="inline-flex items-center rounded-xl bg-sky-600/90 hover:bg-sky-500 text-sm font-medium text-white px-5 py-2.5 transition">
+                Share post
+              </button>
+            </form>
+          </div>
+
+          <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6">
+            <h2 class="text-base md:text-lg font-semibold text-slate-100">Explore posts</h2>
+            <p class="mt-1 text-sm text-slate-400">Filter the feed by category or search for topics.</p>
+
+            <form method="GET" class="mt-5 space-y-4">
+              <div>
+                <input type="text" name="search" value="<?php echo htmlspecialchars($search); ?>" placeholder="Search title, content, or author..." class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm">
+              </div>
+              <div>
+                <select name="category" class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-sm">
+                  <option value="">All categories</option>
+                  <?php foreach ($allowedCategories as $cat): ?>
+                    <option value="<?php echo htmlspecialchars($cat); ?>" <?php echo $categoryFilter === $cat ? 'selected' : ''; ?>>
+                      <?php echo htmlspecialchars($cat); ?>
+                    </option>
+                  <?php endforeach; ?>
+                </select>
+              </div>
+              <div class="flex gap-2">
+                <button type="submit" class="flex-1 rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-sm font-medium text-white px-4 py-3 transition">Apply</button>
+                <a href="community.php" class="flex-1 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 text-sm font-medium text-slate-100 px-4 py-3 text-center transition">Reset</a>
+              </div>
+            </form>
+          </div>
+        </section>
+
+        <section class="space-y-5">
+          <?php if (empty($posts)): ?>
+  <div class="bg-slate-900/80 border border-slate-800 rounded-2xl p-8 md:p-10">
+    <div class="max-w-3xl mx-auto text-center">
+      <div class="mx-auto w-24 h-24 rounded-3xl border border-sky-500/20 bg-gradient-to-br from-sky-500/15 via-cyan-500/10 to-emerald-400/10 flex items-center justify-center text-sky-300 text-3xl shadow-[0_0_30px_rgba(56,189,248,0.08)]">
+        ✦
+      </div>
+
+      <h3 class="mt-5 text-xl font-semibold text-slate-100">No posts found yet</h3>
+      <p class="mt-2 text-sm text-slate-400">
+        This space is waiting for the next idea, question, or learning milestone from the community.
+      </p>
+
+      <div class="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <p class="text-sm font-semibold text-slate-100">Share a lesson learned</p>
+          <p class="mt-2 text-xs text-slate-400">Post a quick insight from your latest coding session, project, or class activity.</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <p class="text-sm font-semibold text-slate-100">Ask a focused question</p>
+          <p class="mt-2 text-xs text-slate-400">Start a discussion about PHP, MySQL, UI design, networking, or cloud topics.</p>
+        </div>
+
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+          <p class="text-sm font-semibold text-slate-100">Inspire other students</p>
+          <p class="mt-2 text-xs text-slate-400">Share your journey, your challenges, or a small win that could motivate others.</p>
+        </div>
+      </div>
+
+      <div class="mt-8">
+        <a href="#top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' }); return false;" class="inline-flex items-center rounded-xl bg-sky-600/90 hover:bg-sky-500 text-sm font-medium text-white px-5 py-3 transition">
+          Create the first post
+        </a>
+      </div>
+    </div>
+  </div>
+<?php else: ?>
+            <?php foreach ($posts as $post): ?>
+              <article class="bg-slate-900/80 border border-slate-800 rounded-2xl p-5 md:p-6 space-y-4 shadow-[0_0_25px_rgba(15,23,42,0.35)]">
+                <div class="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 class="text-base md:text-lg font-semibold text-slate-50"><?php echo htmlspecialchars($post["title"]); ?></h3>
+                    <p class="mt-1 text-xs text-slate-400">
+                      By
+                      <a href="profile.php?id=<?php echo (int)$post["user_id"]; ?>" class="text-sky-400 hover:underline">
+                        <?php echo htmlspecialchars($post["author_name"]); ?>
+                      </a>
+                    </p>
+                  </div>
+
+                  <div class="flex flex-col items-end gap-1">
+                    <span class="inline-flex items-center rounded-full bg-sky-600/80 text-xs font-semibold px-3 py-1 text-white">
+                      <?php echo htmlspecialchars($post["category"]); ?>
+                    </span>
+                    <span class="text-xs text-slate-400"><?php echo date("M j, Y · g:i A", strtotime($post["created_at"])); ?></span>
+                  </div>
+                </div>
+
+                <p class="text-slate-100 text-sm leading-7 whitespace-pre-line"><?php echo nl2br(htmlspecialchars($post["content"])); ?></p>
+
+                <div class="flex flex-wrap items-center gap-2">
+                  <form method="POST">
                     <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                    <input type="hidden" name="form_type" value="delete_post">
+                    <input type="hidden" name="form_type" value="toggle_like">
                     <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
-                    <button type="submit" class="rounded-xl bg-rose-600/90 hover:bg-rose-500 text-xs font-medium text-white px-3 py-1.5 transition">
-                      <?php echo $isAdmin && (int)$post["user_id"] !== (int)$userId ? "Admin delete" : "Delete"; ?>
+                    <button type="submit" class="rounded-xl px-3 py-1.5 text-xs font-medium <?php echo (int)$post["user_liked"] === 1 ? 'bg-rose-600/90 text-white' : 'border border-slate-600/80 bg-slate-900/60 text-slate-100'; ?>">
+                      <?php echo (int)$post["user_liked"] === 1 ? "Unlike" : "Like"; ?>
                     </button>
                   </form>
-                <?php endif; ?>
-              </div>
 
-              <div class="border-t border-slate-800 pt-4 space-y-3">
-                <h4 class="text-sm font-semibold text-slate-200">Comments</h4>
+                  <span class="text-xs text-slate-400"><?php echo (int)$post["like_count"]; ?> like(s)</span>
 
-                <?php if (empty($post["comments"])): ?>
-                  <p class="text-xs text-slate-500">No comments yet.</p>
-                <?php else: ?>
-                  <div class="space-y-2">
-                    <?php foreach ($post["comments"] as $comment): ?>
-                      <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-3 py-2">
-                        <div class="flex items-center justify-between gap-2">
-                          <span class="text-xs font-medium text-slate-200"><?php echo htmlspecialchars($comment["author_name"]); ?></span>
-                          <span class="text-xs text-slate-500"><?php echo date("M j, Y · g:i A", strtotime($comment["created_at"])); ?></span>
+                  <?php if ((int)$post["user_id"] === (int)$userId || $isAdmin): ?>
+                    <form method="POST" onsubmit="return confirm('Delete this post?');">
+                      <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                      <input type="hidden" name="form_type" value="delete_post">
+                      <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
+                      <button type="submit" class="rounded-xl bg-rose-600/90 hover:bg-rose-500 text-xs font-medium text-white px-3 py-1.5 transition">
+                        <?php echo $isAdmin && (int)$post["user_id"] !== (int)$userId ? "Admin delete" : "Delete"; ?>
+                      </button>
+                    </form>
+                  <?php endif; ?>
+                </div>
+
+                <div class="border-t border-slate-800 pt-4 space-y-3">
+                  <h4 class="text-sm font-semibold text-slate-200">Comments</h4>
+
+                  <?php if (empty($post["comments"])): ?>
+                    <p class="text-xs text-slate-500">No comments yet.</p>
+                  <?php else: ?>
+                    <div class="space-y-3">
+                      <?php foreach ($post["comments"] as $comment): ?>
+                        <div class="rounded-xl bg-slate-900/80 border border-slate-800 px-3 py-3">
+                          <div class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-medium text-slate-200"><?php echo htmlspecialchars($comment["author_name"]); ?></span>
+                            <span class="text-xs text-slate-500"><?php echo date("M j, Y · g:i A", strtotime($comment["created_at"])); ?></span>
+                          </div>
+                          <p class="mt-2 text-xs text-slate-200 leading-6 whitespace-pre-line"><?php echo nl2br(htmlspecialchars($comment["content"])); ?></p>
+
+                          <?php if ((int)$comment["user_id"] === (int)$userId || $isAdmin): ?>
+                            <form method="POST" class="mt-3" onsubmit="return confirm('Delete this comment?');">
+                              <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                              <input type="hidden" name="form_type" value="delete_comment">
+                              <input type="hidden" name="comment_id" value="<?php echo (int)$comment["id"]; ?>">
+                              <button type="submit" class="rounded-xl bg-rose-600/90 hover:bg-rose-500 text-[11px] font-medium text-white px-3 py-1.5 transition">
+                                <?php echo $isAdmin && (int)$comment["user_id"] !== (int)$userId ? "Admin delete" : "Delete"; ?>
+                              </button>
+                            </form>
+                          <?php endif; ?>
                         </div>
-                        <p class="mt-1 text-xs text-slate-200 whitespace-pre-line"><?php echo nl2br(htmlspecialchars($comment["content"])); ?></p>
+                      <?php endforeach; ?>
+                    </div>
+                  <?php endif; ?>
 
-                        <?php if ((int)$comment["user_id"] === (int)$userId || $isAdmin): ?>
-                          <form method="POST" class="mt-2" onsubmit="return confirm('Delete this comment?');">
-                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                            <input type="hidden" name="form_type" value="delete_comment">
-                            <input type="hidden" name="comment_id" value="<?php echo (int)$comment["id"]; ?>">
-                            <button type="submit" class="rounded-xl bg-rose-600/90 hover:bg-rose-500 text-[11px] font-medium text-white px-3 py-1.5 transition">
-                              <?php echo $isAdmin && (int)$comment["user_id"] !== (int)$userId ? "Admin delete" : "Delete"; ?>
-                            </button>
-                          </form>
-                        <?php endif; ?>
-                      </div>
-                    <?php endforeach; ?>
-                  </div>
+                  <form method="POST" class="mt-2 space-y-2">
+                    <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+                    <input type="hidden" name="form_type" value="comment">
+                    <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
+                    <textarea name="comment_content" rows="2" class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs" placeholder="Share a short comment..."></textarea>
+                    <button type="submit" class="inline-flex items-center rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-xs font-medium text-white px-3 py-1.5 transition">
+                      Post comment
+                    </button>
+                  </form>
+                </div>
+              </article>
+            <?php endforeach; ?>
+
+            <?php if ($totalPages > 1): ?>
+              <div class="flex items-center justify-center gap-3 pt-4">
+                <?php if ($page > 1): ?>
+                  <a href="<?php echo htmlspecialchars(buildPageUrl($page - 1, $search, $categoryFilter)); ?>" class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 text-sm">Previous</a>
                 <?php endif; ?>
 
-                <form method="POST" class="mt-2 space-y-2">
-                  <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-                  <input type="hidden" name="form_type" value="comment">
-                  <input type="hidden" name="post_id" value="<?php echo (int)$post["id"]; ?>">
-                  <textarea name="comment_content" rows="2" class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-3 py-2 outline-none border border-slate-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs" placeholder="Share a short comment..."></textarea>
-                  <button type="submit" class="inline-flex items-center rounded-xl bg-emerald-600/90 hover:bg-emerald-500 text-xs font-medium text-white px-3 py-1.5 transition">
-                    Post comment
-                  </button>
-                </form>
+                <span class="text-sm text-slate-400">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
+
+                <?php if ($page < $totalPages): ?>
+                  <a href="<?php echo htmlspecialchars(buildPageUrl($page + 1, $search, $categoryFilter)); ?>" class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 text-sm">Next</a>
+                <?php endif; ?>
               </div>
-            </article>
-          <?php endforeach; ?>
-
-          <?php if ($totalPages > 1): ?>
-            <div class="flex items-center justify-center gap-3 pt-4">
-              <?php if ($page > 1): ?>
-                <a href="<?php echo htmlspecialchars(buildPageUrl($page - 1, $search, $categoryFilter)); ?>" class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 text-sm">Previous</a>
-              <?php endif; ?>
-
-              <span class="text-sm text-slate-400">Page <?php echo $page; ?> of <?php echo $totalPages; ?></span>
-
-              <?php if ($page < $totalPages): ?>
-                <a href="<?php echo htmlspecialchars(buildPageUrl($page + 1, $search, $categoryFilter)); ?>" class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 text-sm">Next</a>
-              <?php endif; ?>
-            </div>
+            <?php endif; ?>
           <?php endif; ?>
-        <?php endif; ?>
-      </section>
-    </main>
+        </section>
+      </main>
+    </div>
   </div>
 </body>
 </html>

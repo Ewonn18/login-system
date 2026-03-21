@@ -2,11 +2,6 @@
 require_once "session.php";
 require_once "csrf.php";
 
-$configPath = __DIR__ . "/config.php";
-$exampleConfigPath = __DIR__ . "/config.example.php";
-$appConfig = file_exists($configPath) ? require $configPath : require $exampleConfigPath;
-$baseUrl = rtrim($appConfig["base_url"] ?? "http://localhost/login-system", "/");
-
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $csrfToken = $_POST["csrf_token"] ?? "";
 
@@ -93,30 +88,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $userId = $stmt->insert_id;
     $stmt->close();
 
-    $selector = bin2hex(random_bytes(8));
-    $validator = bin2hex(random_bytes(32));
-    $tokenHash = hash("sha256", $validator);
-    $expiresAt = date("Y-m-d H:i:s", time() + 60 * 60 * 24);
-
-    $insertVerification = $conn->prepare(
-        "INSERT INTO email_verifications (user_id, selector, token_hash, expires_at) VALUES (?, ?, ?, ?)"
-    );
-
-    if ($insertVerification) {
-        $insertVerification->bind_param("isss", $userId, $selector, $tokenHash, $expiresAt);
-        $insertVerification->execute();
-        $insertVerification->close();
-    }
-
-    $verifyLink = $baseUrl . "/verify-email.php?selector=" . urlencode($selector) . "&validator=" . urlencode($validator);
+    session_regenerate_id(true);
+    $_SESSION["user_id"] = $userId;
+    $_SESSION["user_name"] = $name;
+    $_SESSION["user_email"] = $email;
+    $_SESSION["user_role"] = "user";
+    $_SESSION["remember_me"] = false;
 
     $conn->close();
-
-    header(
-        "Location: index.php?panel=signin&type=success&message=" .
-        urlencode("Registration successful. Please verify your email before signing in.") .
-        "&verify_link=" . urlencode($verifyLink)
-    );
+    header("Location: dashboard.php");
     exit();
 }
 

@@ -1,4 +1,6 @@
 <?php
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
 $configPath = __DIR__ . "/config.php";
 $exampleConfigPath = __DIR__ . "/config.example.php";
 
@@ -11,10 +13,9 @@ $user = $config["db_user"] ?? "root";
 $pass = $config["db_pass"] ?? "";
 $dbname = $config["db_name"] ?? "login_system";
 
-$conn = new mysqli($host, $user, $pass, $dbname);
-
-if ($conn->connect_error) {
-    die("Database connection failed.");
+try {
+    $conn = new mysqli($host, $user, $pass, $dbname);
+    $conn->set_charset("utf8mb4");
+} catch (mysqli_sql_exception $e) {
+    die("Database connection failed: " . $e->getMessage());
 }
-
-$conn->set_charset("utf8mb4");

@@ -30,7 +30,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         exit();
     }
 
-    $sql = "SELECT id, name, email, password FROM users WHERE email = ?";
+    $sql = "SELECT id, name, email, password, role FROM users WHERE email = ?";
     $stmt = $conn->prepare($sql);
 
     if (!$stmt) {
@@ -48,6 +48,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     if ($result && $result->num_rows === 1) {
         $user = $result->fetch_assoc();
+
         if (password_verify($password, $user["password"])) {
             $loginSuccessful = true;
         }
@@ -61,6 +62,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $_SESSION["user_id"] = $user["id"];
         $_SESSION["user_name"] = $user["name"];
         $_SESSION["user_email"] = $user["email"];
+        $_SESSION["user_role"] = $user["role"];
         $_SESSION["remember_me"] = !empty($_POST["remember"]);
 
         if (!empty($_POST["remember"])) {

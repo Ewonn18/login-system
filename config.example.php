@@ -4,6 +4,6 @@ return [
     "db_user" => "root",
     "db_pass" => "",
     "db_name" => "login_system",
-    "base_url" => "http://localhost/login-system",
+    "base_url" => "http://localhost/TechTrail%20Community",
     "remember_cookie_name" => "techtrail_remember",
 ];

@@ -21,7 +21,7 @@ function restore_remembered_login(mysqli $conn, string $cookieName): void
         return;
     }
 
-    $parts = explode(":", $_COOKIE[$cookieName]);
+    $parts = explode(":", $_COOKIE[$cookieName], 2);
     if (count($parts) !== 2) {
         setcookie($cookieName, "", time() - 3600, "/");
         return;
@@ -64,7 +64,17 @@ function restore_remembered_login(mysqli $conn, string $cookieName): void
                 $deleteStmt->execute();
                 $deleteStmt->close();
             }
-            setcookie($cookieName, "", time() - 3600, "/");
+
+            setcookie(
+                $cookieName,
+                "",
+                [
+                    "expires" => time() - 3600,
+                    "path" => "/",
+                    "httponly" => true,
+                    "samesite" => "Lax",
+                ]
+            );
         }
     }
 

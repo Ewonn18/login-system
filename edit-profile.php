@@ -264,212 +264,244 @@ $conn->close();
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TechTrail Community - Edit Profile</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <link
-    rel="stylesheet"
-    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css"
-  >
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
 </head>
-<body class="min-h-screen bg-slate-950 text-slate-100 flex items-center justify-center px-4 py-10">
-  <div class="w-full max-w-3xl bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
-    <header class="bg-slate-900 border-b border-slate-800 px-6 md:px-8 py-5">
-      <p class="text-xs uppercase tracking-[0.25em] text-slate-400">TechTrail Community</p>
-      <h1 class="mt-2 text-2xl md:text-3xl font-semibold text-slate-50">Edit Profile</h1>
-      <p class="mt-1 text-sm text-slate-400">
-        Update your profile details, badge, skills, and password.
-      </p>
-    </header>
+<body class="min-h-screen bg-slate-950 text-slate-100">
+  <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(56,189,248,0.10),transparent_25%),radial-gradient(circle_at_bottom_right,rgba(16,185,129,0.10),transparent_25%)] pointer-events-none"></div>
 
-    <main class="p-6 md:p-8">
-      <?php if (!empty($message)): ?>
-        <div class="<?php echo $messageType === 'success' ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-200' : 'bg-rose-500/10 border-rose-500/60 text-rose-200'; ?> border rounded-2xl px-4 py-3 text-xs md:text-sm mb-6">
-          <?php echo htmlspecialchars($message); ?>
-        </div>
-      <?php endif; ?>
-
-      <form method="POST" action="edit-profile.php" enctype="multipart/form-data" class="space-y-5">
-        <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">Full Name</label>
-            <input
-              type="text"
-              name="name"
-              value="<?php echo htmlspecialchars($user["name"]); ?>"
-              required
-              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-            >
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">Email Address</label>
-            <input
-              type="email"
-              name="email"
-              value="<?php echo htmlspecialchars($user["email"]); ?>"
-              required
-              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-            >
-          </div>
-        </div>
-
+  <div class="relative max-w-5xl mx-auto px-4 py-8 md:py-10">
+    <div class="bg-slate-900/80 border border-slate-800 rounded-3xl shadow-[0_0_40px_rgba(15,23,42,0.8)] overflow-hidden">
+      <header class="bg-slate-900 border-b border-slate-800 px-6 md:px-8 py-5 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <label class="block text-sm text-slate-300 mb-2">Profile Picture (optional)</label>
-          <input
-            type="file"
-            name="profile_picture"
-            accept="image/jpeg,image/png,image/webp"
-            class="w-full text-sm text-slate-300 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500"
-          >
-          <p class="mt-2 text-xs text-slate-400">JPG, PNG, or WEBP. Max size 2MB. Minimum 100x100 pixels.</p>
-
-          <?php if (!empty($user["profile_picture"])): ?>
-            <div class="mt-4">
-              <p class="text-xs text-slate-400 mb-2">Current profile picture</p>
-              <div class="w-20 h-20 rounded-2xl overflow-hidden border border-slate-700 bg-slate-950">
-                <img
-                  src="<?php echo htmlspecialchars($user["profile_picture"]); ?>"
-                  alt="Current profile picture"
-                  class="w-full h-full object-cover"
-                >
-              </div>
-            </div>
-          <?php endif; ?>
+          <p class="text-xs uppercase tracking-[0.25em] text-sky-300">TechTrail Community</p>
+          <h1 class="mt-2 text-2xl md:text-3xl font-semibold text-slate-50">Edit Profile</h1>
+          <p class="mt-1 text-sm text-slate-400">Update your developer profile, skills, badge, and account details.</p>
         </div>
 
-        <div>
-          <label class="block text-sm text-slate-300 mb-2">Bio</label>
-          <textarea
-            name="bio"
-            rows="4"
-            placeholder="Share a short introduction about your IT journey."
-            class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-          ><?php echo htmlspecialchars($user["bio"] ?? ""); ?></textarea>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">School</label>
-            <input
-              type="text"
-              name="school"
-              value="<?php echo htmlspecialchars($user["school"] ?? ""); ?>"
-              placeholder="e.g. IT University"
-              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-            >
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">Specialization</label>
-            <select
-              name="specialization"
-              class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-            >
-              <?php
-                $currentSpec = trim($user["specialization"] ?? "");
-                $options = [
-                    "Frontend Learner",
-                    "Backend Explorer",
-                    "Full Stack Starter",
-                    "Networking Enthusiast",
-                    "UI/UX Beginner",
-                    "Database Builder",
-                    "Security Curious",
-                    "Career Builder",
-                    "Cloud Rookie",
-                ];
-              ?>
-              <option value="" <?php echo $currentSpec === '' ? 'selected' : ''; ?>>Select a specialization badge</option>
-              <?php foreach ($options as $opt): ?>
-                <option value="<?php echo htmlspecialchars($opt); ?>" <?php echo $currentSpec === $opt ? 'selected' : ''; ?>>
-                  <?php echo htmlspecialchars($opt); ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <p class="mt-2 text-xs text-slate-400">
-              Choose a simple badge that best matches your current IT focus.
-            </p>
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">Skills</label>
-            <input
-              type="text"
-              name="skills"
-              value="<?php echo htmlspecialchars($user["skills"] ?? ""); ?>"
-              placeholder="e.g. PHP, MySQL, Tailwind"
-              class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-            >
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">New Password (optional)</label>
-            <div class="relative">
-              <input
-                type="password"
-                name="new_password"
-                id="editPassword"
-                placeholder="Leave blank to keep current password"
-                class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-                oninput="checkPasswordStrength(this.value, 'editStrengthText', 'editStrengthBar')"
-              >
-              <button
-                type="button"
-                onclick="togglePassword('editPassword', 'editEye')"
-                class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-              >
-                <i id="editEye" class="fa-solid fa-eye"></i>
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label class="block text-sm text-slate-300 mb-2">Confirm New Password</label>
-            <div class="relative">
-              <input
-                type="password"
-                name="confirm_password"
-                id="editConfirmPassword"
-                placeholder="Confirm your new password"
-                class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
-              >
-              <button
-                type="button"
-                onclick="togglePassword('editConfirmPassword', 'editConfirmEye')"
-                class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
-              >
-                <i id="editConfirmEye" class="fa-solid fa-eye"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-            <div id="editStrengthBar" class="h-full w-0 transition-all duration-300"></div>
-          </div>
-          <p id="editStrengthText" class="text-left text-sm text-slate-400 mt-2">Password strength: —</p>
-        </div>
-
-        <div class="flex flex-wrap gap-3 pt-2">
-          <button
-            type="submit"
-            class="px-6 py-3 rounded-xl bg-sky-600/90 hover:bg-sky-500 transition font-semibold text-white shadow-md shadow-sky-500/30"
-          >
-            Save Changes
-          </button>
-
-          <a
-            href="dashboard.php"
-            class="px-6 py-3 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 transition text-slate-100"
-          >
-            Cancel
+        <div class="flex flex-wrap gap-3">
+          <a href="dashboard.php" class="px-4 py-2 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 text-sm font-medium text-slate-100 transition">
+            Back to dashboard
+          </a>
+          <a href="profile.php?id=<?php echo (int)$userId; ?>" class="px-4 py-2 rounded-xl border border-sky-500/50 bg-sky-500/10 hover:bg-sky-500/20 text-sm font-medium text-sky-200 transition">
+            View public profile
           </a>
         </div>
-      </form>
-    </main>
+      </header>
+
+      <main class="p-6 md:p-8">
+        <?php if (!empty($message)): ?>
+          <div class="<?php echo $messageType === 'success' ? 'bg-emerald-500/10 border-emerald-500/60 text-emerald-200' : 'bg-rose-500/10 border-rose-500/60 text-rose-200'; ?> border rounded-2xl px-4 py-3 text-xs md:text-sm mb-6">
+            <?php echo htmlspecialchars($message); ?>
+          </div>
+        <?php endif; ?>
+
+        <form method="POST" action="edit-profile.php" enctype="multipart/form-data" class="space-y-6">
+          <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8'); ?>">
+
+          <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-1 bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+              <h2 class="text-base font-semibold text-slate-100">Profile Preview</h2>
+
+              <div class="mt-5 flex flex-col items-center text-center">
+                <?php if (!empty($user["profile_picture"])): ?>
+                  <img
+                    src="<?php echo htmlspecialchars($user["profile_picture"]); ?>"
+                    alt="Current profile picture"
+                    class="w-28 h-28 rounded-3xl object-cover border border-slate-700 shadow-lg"
+                  >
+                <?php else: ?>
+                  <div class="w-28 h-28 rounded-3xl bg-gradient-to-br from-sky-500/80 via-cyan-500/70 to-emerald-400/70 flex items-center justify-center text-4xl font-bold text-white border border-slate-700">
+                    <?php echo strtoupper(substr($user["name"], 0, 1)); ?>
+                  </div>
+                <?php endif; ?>
+
+                <h3 class="mt-4 text-lg font-semibold text-slate-50"><?php echo htmlspecialchars($user["name"]); ?></h3>
+                <p class="mt-1 text-sm text-slate-400"><?php echo htmlspecialchars($user["specialization"] ?: "Student Developer"); ?></p>
+                <p class="mt-3 text-xs text-slate-500">Upload a clearer profile image to make your page more personal.</p>
+              </div>
+
+              <div class="mt-6">
+                <label class="block text-sm text-slate-300 mb-2">Profile Picture</label>
+                <input
+                  type="file"
+                  name="profile_picture"
+                  accept="image/jpeg,image/png,image/webp"
+                  class="w-full text-sm text-slate-300 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-sky-600 file:text-white hover:file:bg-sky-500"
+                >
+                <p class="mt-2 text-xs text-slate-400">JPG, PNG, or WEBP. Max size 2MB. Minimum 100x100 pixels.</p>
+              </div>
+            </div>
+
+            <div class="lg:col-span-2 space-y-6">
+              <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                <h2 class="text-base font-semibold text-slate-100">Basic Information</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                  <div>
+                    <label class="block text-sm text-slate-300 mb-2">Full Name</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value="<?php echo htmlspecialchars($user["name"]); ?>"
+                      required
+                      class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                    >
+                  </div>
+
+                  <div>
+                    <label class="block text-sm text-slate-300 mb-2">Email Address</label>
+                    <input
+                      type="email"
+                      name="email"
+                      value="<?php echo htmlspecialchars($user["email"]); ?>"
+                      required
+                      class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                    >
+                  </div>
+                </div>
+
+                <div class="mt-5">
+                  <label class="block text-sm text-slate-300 mb-2">Bio</label>
+                  <textarea
+                    name="bio"
+                    rows="4"
+                    placeholder="Share a short introduction about your IT journey."
+                    class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                  ><?php echo htmlspecialchars($user["bio"] ?? ""); ?></textarea>
+                </div>
+              </div>
+
+              <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                <h2 class="text-base font-semibold text-slate-100">Developer Details</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mt-5">
+                  <div>
+                    <label class="block text-sm text-slate-300 mb-2">School</label>
+                    <input
+                      type="text"
+                      name="school"
+                      value="<?php echo htmlspecialchars($user["school"] ?? ""); ?>"
+                      placeholder="e.g. IT University"
+                      class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                    >
+                  </div>
+
+                  <div>
+                    <label class="block text-sm text-slate-300 mb-2">Specialization</label>
+                    <select
+                      name="specialization"
+                      class="w-full bg-slate-900/80 text-slate-100 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                    >
+                      <?php
+                        $currentSpec = trim($user["specialization"] ?? "");
+                        $options = [
+                            "Frontend Learner",
+                            "Backend Explorer",
+                            "Full Stack Starter",
+                            "Networking Enthusiast",
+                            "UI/UX Beginner",
+                            "Database Builder",
+                            "Security Curious",
+                            "Career Builder",
+                            "Cloud Rookie",
+                        ];
+                      ?>
+                      <option value="" <?php echo $currentSpec === '' ? 'selected' : ''; ?>>Select a specialization badge</option>
+                      <?php foreach ($options as $opt): ?>
+                        <option value="<?php echo htmlspecialchars($opt); ?>" <?php echo $currentSpec === $opt ? 'selected' : ''; ?>>
+                          <?php echo htmlspecialchars($opt); ?>
+                        </option>
+                      <?php endforeach; ?>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm text-slate-300 mb-2">Skills</label>
+                    <input
+                      type="text"
+                      name="skills"
+                      value="<?php echo htmlspecialchars($user["skills"] ?? ""); ?>"
+                      placeholder="e.g. PHP, MySQL, Tailwind"
+                      class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                    >
+                  </div>
+                </div>
+              </div>
+
+              <div class="bg-slate-900/70 border border-slate-800 rounded-2xl p-5">
+                <h2 class="text-base font-semibold text-slate-100">Security</h2>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
+                  <div>
+                    <label class="block text-sm text-slate-300 mb-2">New Password (optional)</label>
+                    <div class="relative">
+                      <input
+                        type="password"
+                        name="new_password"
+                        id="editPassword"
+                        placeholder="Leave blank to keep current password"
+                        class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                        oninput="checkPasswordStrength(this.value, 'editStrengthText', 'editStrengthBar')"
+                      >
+                      <button
+                        type="button"
+                        onclick="togglePassword('editPassword', 'editEye')"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        <i id="editEye" class="fa-solid fa-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label class="block text-sm text-slate-300 mb-2">Confirm New Password</label>
+                    <div class="relative">
+                      <input
+                        type="password"
+                        name="confirm_password"
+                        id="editConfirmPassword"
+                        placeholder="Confirm your new password"
+                        class="w-full bg-slate-900/80 text-slate-100 placeholder-slate-500 rounded-xl px-4 py-3 pr-12 outline-none border border-slate-700 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 text-sm"
+                      >
+                      <button
+                        type="button"
+                        onclick="togglePassword('editConfirmPassword', 'editConfirmEye')"
+                        class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                      >
+                        <i id="editConfirmEye" class="fa-solid fa-eye"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-5">
+                  <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                    <div id="editStrengthBar" class="h-full w-0 transition-all duration-300"></div>
+                  </div>
+                  <p id="editStrengthText" class="text-left text-sm text-slate-400 mt-2">Password strength: —</p>
+                </div>
+              </div>
+
+              <div class="flex flex-wrap gap-3 pt-2">
+                <button
+                  type="submit"
+                  class="px-6 py-3 rounded-xl bg-sky-600/90 hover:bg-sky-500 transition font-semibold text-white shadow-md shadow-sky-500/30"
+                >
+                  Save Changes
+                </button>
+
+                <a
+                  href="dashboard.php"
+                  class="px-6 py-3 rounded-xl border border-slate-600/80 bg-slate-900/60 hover:bg-slate-800/80 transition text-slate-100"
+                >
+                  Return to Dashboard
+                </a>
+              </div>
+            </div>
+          </section>
+        </form>
+      </main>
+    </div>
   </div>
 
   <script>

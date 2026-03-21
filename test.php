@@ -1,4 +1,4 @@
 <?php
-include "db.php";
-echo "Database connected successfully!";
-?>
+require_once "db.php";
+echo "Database connected successfully.";
+$conn->close();

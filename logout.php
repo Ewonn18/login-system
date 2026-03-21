@@ -1,69 +1,37 @@
 <?php
 require_once "session.php";
 
-$selector = trim($_GET["selector"] ?? "");
-$validator = trim($_GET["validator"] ?? "");
+$configPath = __DIR__ . "/config.php";
+$exampleConfigPath = __DIR__ . "/config.example.php";
+$appConfig = file_exists($configPath) ? require $configPath : require $exampleConfigPath;
+$rememberCookieName = $appConfig["remember_cookie_name"] ?? "techtrail_remember";
 
-if ($selector === "" || $validator === "") {
-    $conn->close();
-    header("Location: index.php?panel=signin&type=error&message=" . urlencode("Invalid verification link."));
-    exit();
+if (isset($_SESSION["user_id"])) {
+    $userId = (int)$_SESSION["user_id"];
+
+    $deleteStmt = $conn->prepare("DELETE FROM remember_tokens WHERE user_id = ?");
+    if ($deleteStmt) {
+        $deleteStmt->bind_param("i", $userId);
+        $deleteStmt->execute();
+        $deleteStmt->close();
+    }
 }
 
-$stmt = $conn->prepare(
-    "SELECT id, user_id, token_hash, expires_at, used_at
-     FROM email_verifications
-     WHERE selector = ?
-     LIMIT 1"
+setcookie(
+    $rememberCookieName,
+    "",
+    [
+        "expires" => time() - 3600,
+        "path" => "/",
+        "httponly" => true,
+        "samesite" => "Lax",
+    ]
 );
 
-if (!$stmt) {
-    $conn->close();
-    header("Location: index.php?panel=signin&type=error&message=" . urlencode("Something went wrong."));
-    exit();
-}
-
-$stmt->bind_param("s", $selector);
-$stmt->execute();
-$result = $stmt->get_result();
-
-if (!$result || $result->num_rows !== 1) {
-    $stmt->close();
-    $conn->close();
-    header("Location: index.php?panel=signin&type=error&message=" . urlencode("Invalid or expired verification link."));
-    exit();
-}
-
-$row = $result->fetch_assoc();
-$stmt->close();
-
-$isExpired = strtotime($row["expires_at"]) < time();
-$isUsed = !empty($row["used_at"]);
-$isValidToken = hash_equals($row["token_hash"], hash("sha256", $validator));
-
-if ($isExpired || $isUsed || !$isValidToken) {
-    $conn->close();
-    header("Location: index.php?panel=signin&type=error&message=" . urlencode("Invalid or expired verification link."));
-    exit();
-}
-
-$updateUser = $conn->prepare("UPDATE users SET email_verified_at = NOW() WHERE id = ?");
-if ($updateUser) {
-    $userId = (int)$row["user_id"];
-    $updateUser->bind_param("i", $userId);
-    $updateUser->execute();
-    $updateUser->close();
-}
-
-$markUsed = $conn->prepare("UPDATE email_verifications SET used_at = NOW() WHERE id = ?");
-if ($markUsed) {
-    $verificationId = (int)$row["id"];
-    $markUsed->bind_param("i", $verificationId);
-    $markUsed->execute();
-    $markUsed->close();
-}
+session_unset();
+session_destroy();
 
 $conn->close();
 
-header("Location: index.php?panel=signin&type=success&message=" . urlencode("Email verified successfully. You can now sign in."));
+header("Location: index.php?panel=signin&type=success&message=" . urlencode("You have been signed out successfully."));
 exit();
